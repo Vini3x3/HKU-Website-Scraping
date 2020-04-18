@@ -1,7 +1,6 @@
 import traceback
 import time
 
-import website
 import moodle
 import portal
 
@@ -16,33 +15,36 @@ creditential = {
     'password': '',
 }
 
+# Z = website.Website(webscrape_settings)
+# del Z
+
 A = moodle.Moodle(creditential, webscrape_settings)
 try:
-    # """
-    # submit assignemnt via file manager plugin
-    # """
-    # submits = A.getAssignmentPath('COMP3330')
-    # print(submits[0])
-    # A.submit_file(submits[0][1], ['C:\\Users\\vince\\Downloads\\error.png'])
-    # """
-    # submit assignemnt via turnitin
-    # """
-    # submits = A.getAssignmentPath('CAES9542')
-    # print(submits[0])
-    # A.submit_file(submits[0][1], 'C:\\Users\\vince\\Downloads\\error.png')
-    # """
-    # Get course file in a course
-    # """
-    # files = A.course_page_files('ELEC3241')    
-    # A.downloadFile(files[0][1])
+#     # """
+#     # submit assignemnt via file manager plugin
+#     # """
+#     # submits = A.getAssignmentPath('COMP3330')
+#     # print(submits[0])
+#     # A.submit_file(submits[0][1], ['C:\\Users\\vince\\Downloads\\error.png'])
+#     # """
+#     # submit assignemnt via turnitin
+#     # """
+#     # submits = A.getAssignmentPath('CAES9542')
+#     # print(submits[0])
+#     # A.submit_file(submits[0][1], 'C:\\Users\\vince\\Downloads\\error.png')
+#     # """
+#     # Get course file in a course
+#     # """
+#     # files = A.course_page_files('ELEC3241')    
+#     # A.downloadFile(files[0][1])
 
-    # time = 10*60
-    # while time>0:
-    #     A.keepAlive()
+#     # time = 10*60
+#     # while time>0:
+#     #     A.keepAlive()
     
-    # """
-    # Get course assignmet, quiz results
-    # """
+#     # """
+#     # Get course assignmet, quiz results
+#     # """
     table = A.getGrades('COMP3270') 
     print(table)
 
@@ -52,7 +54,7 @@ finally:
     del A
 
 # B = portal.Portal(creditential, webscrape_settings)
-# try:
+# try:    
     # """
     # get weekly schedule
     # """
@@ -61,7 +63,7 @@ finally:
     # """
     # get student GPA
     # """
-    # table = B.getStudentGPA()
+    # table = B.findStudentGPA()
     # print(table)
     # """
     # get student Course Grades

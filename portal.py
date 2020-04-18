@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup as bs
-# from selenium import webdriver
+from selenium import webdriver
 
+import traceback
 import time
 
 import website
@@ -45,9 +46,9 @@ class Portal(website.Website):
         signout.click()                
 
     def getSiteMap(self):
-        result = []
-        self.browser.get(self.sitelinks['home'])
-        soap = bs(self.browser.page_source, features='lxml')
+        result = []        
+        r = self.browser.request('GET', self.sitelinks['home'])
+        soap = bs(r.text, features='lxml')
         for link in soap.find_all("a"):
             if link['href'][0:4] == 'http':
                 result.append(link['href'])
@@ -105,49 +106,50 @@ class Portal(website.Website):
         for timeLabel in timeLabels:
             timeLabel.parent['class'] = 'table-warning'
 
-        return table.prettify()
+        return table.prettify()    
 
-    def getStudentCourseGrades(self):        
-        for link in self.sitemap:                
-            if self.sitelinks['grades'] in link:               
-                self.browser.get(link)
-                soup = bs(self.browser.page_source, features='lxml')
+    def getStudentCourseGrades(self):
+        for link in self.sitemap:
+            if self.sitelinks['grades'] in link:
+                r = self.browser.request('GET', link)
+                soup = bs(r.text, features='lxml')
                 for each in soup.find_all('frame'):
                     
                     if self.sitelinks['grades2'] in each['src']:
-                        
-                        self.browser.get(each['src'])                            
-                        
-                        soup2 = bs(self.browser.find_element_by_id('ACE_width').get_attribute('outerHTML'), features='lxml')
-                        tables = soup2.find_all('table', {'class': 'PSLEVEL1GRIDWBO'})                            
-                        print(len(tables))
+                                                
+                        r2 = self.browser.request('GET', each['src'])
 
-                        self.cache_HTML['course_grades'] = tables[0].decode_contents()
-                        self.cache_HTML['GPA'] = tables[1].decode_contents()
-                        # table [0] = course grades, table[1] = overall GPA
-                        return tables[0].decode_contents()
-                return 'not found1'
-        return 'not found2'
-            
-    
-    def getStudentGPA(self):        
-        for link in self.sitemap:                
-            if self.sitelinks['grades'] in link:               
-                self.browser.get(link)
-                soup = bs(self.browser.page_source, features='lxml')
-                for each in soup.find_all('frame'):
-                    
-                    if self.sitelinks['grades2'] in each['src']:
-                        
-                        self.browser.get(each['src'])
-                        
-                        soup2 = bs(self.browser.find_element_by_id('ACE_width').get_attribute('outerHTML'), features='lxml')
-                        tables = soup2.find_all('table', {'class': 'PSLEVEL1GRIDWBO'})                            
+                        frame = bs(r2.text, features = 'lxml')
 
-                        self.cache_HTML['course_grades'] = tables[0].decode_contents()
-                        self.cache_HTML['GPA'] = tables[1].decode_contents()
+                        soup2 = frame.find(id='ACE_width')
+                                                
+                        tables = soup2.find_all('table', {'class': 'PSLEVEL1GRIDWBO'})                        
+                        
                         # table [0] = course grades, table[1] = overall GPA
-                        return tables[1].decode_contents()
+                        s = tables[0].prettify()                        
+                        return s
                                     
                 return 'not found1'
-        return 'not found2'
+        return 'not found in sitemap'
+
+    def getStudentGPA(self):
+        for link in self.sitemap:
+            if self.sitelinks['grades'] in link:
+                r = self.browser.request('GET', link)
+                soup = bs(r.text, features='lxml')
+                for each in soup.find_all('frame'):
+                    
+                    if self.sitelinks['grades2'] in each['src']:
+                                                
+                        r2 = self.browser.request('GET', each['src'])
+                        frame = bs(r2.text, features = 'lxml')
+                        soup2 = frame.find(id='ACE_width')
+                        tables = soup2.find_all('table', {'class': 'PSLEVEL1GRIDWBO'})
+                        
+                        # table [0] = course grades, table[1] = overall GPA
+                        s = tables[1].prettify()                        
+                        return s
+                                    
+                return 'not found1'
+        return 'not found in sitemap'
+    

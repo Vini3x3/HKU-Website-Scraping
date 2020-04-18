@@ -1,4 +1,6 @@
 from bs4 import BeautifulSoup as bs
+from seleniumrequests import Firefox
+from seleniumrequests import Chrome
 from selenium import webdriver
 
 import traceback
@@ -6,8 +8,8 @@ import time
 
 class Website:
     def __init__(self, webscrape_settings):
-        self.browser = self.makeBrowser(webscrape_settings)
-    def __del__(self):
+        self.browser = self.makeBrowser(webscrape_settings)        
+    def __del__(self):        
         self.browser.quit()
     def __str__(self):
         return 'This is a Site instance'
@@ -25,18 +27,18 @@ class Website:
         """        
         if webscrape_settings['browser'] == 'Chrome':
             if not webscrape_settings['headless']:
-                return webdriver.Chrome()
+                return Chrome()
             else:
                 options = webdriver.ChromeOptions()
                 options.add_argument('-headless')
-                return webdriver.Chrome(options=options)
+                return Chrome(options=options)
         elif webscrape_settings['browser'] == 'FireFox':
             if not webscrape_settings['headless']:          
-                return webdriver.Firefox()
+                return Firefox()
             else:
                 options = webdriver.FirefoxOptions()
                 options.add_argument('-headless')
-                return webdriver.Firefox(options=options)
+                return Firefox(options=options)
         else:
             print('setting error')
             return

@@ -1,10 +1,11 @@
 from bs4 import BeautifulSoup as bs
 from selenium import webdriver
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By as BY
 
-
+import traceback
 import time
 
 import website
@@ -53,9 +54,9 @@ class Moodle(website.Website):
                 print(self.browser.current_url)
 
     def logout(self):
-        exit_link = ''
-        self.browser.get(self.sitelinks['home'])
-        soap = bs(self.browser.page_source, features='lxml')    
+        exit_link = ''        
+        r = self.browser.request('GET', self.sitelinks['home'])
+        soap = bs(r.text, features='lxml')    
         menu = soap.find('ul',{'id':'action-menu-0-menu'})    
         elem_as = menu.find_all('a')
         links = [elem_a['href'] for elem_a in elem_as]    
@@ -63,11 +64,11 @@ class Moodle(website.Website):
             if self.sitelinks['logout'] in link:
                 exit_link = link
         self.browser.get(exit_link)
-        return
-
-    def getSiteMap(self):
-        self.browser.get(self.sitelinks['home'])
-        soup = bs(self.browser.page_source, features = 'lxml')
+        return    
+    
+    def getSiteMap(self):        
+        r = self.browser.request('GET', self.sitelinks['home'])
+        soup = bs(r.text, features = 'lxml')
         course_tab = soup.find_all('div', {'class': 'block_course_list block list_block'})[0]
         course_tab = course_tab.find('ul',{'class': 'unlist'})
         elem_as = course_tab.find_all('a')
@@ -82,7 +83,8 @@ class Moodle(website.Website):
         for name, link in self.sitemap:
             if course_code in name:
                 self.browser.get(link)
-                soup = bs(self.browser.page_source, features='lxml')
+                r = self.browser.request('GET', link)
+                soup = bs(r.text, features='lxml')
                 main = soup.find('section', {'id': 'region-main'})
                 elem_as = main.find_all('a')
 
@@ -99,7 +101,7 @@ class Moodle(website.Website):
         return
 
     def downloadFile(self, url):
-        self.browser.get(url)
+        self.browser.get(url)    
 
     def getAssignmentPath(self, course_code):
         course_url = ''        
@@ -108,12 +110,11 @@ class Moodle(website.Website):
             if course_code in name:
                 course_url = link                
         if course_url != '':
-            self.browser.get(course_url)
-            soap = bs(self.browser.page_source, features='lxml')            
+            # self.browser.get(course_url)
+            r = self.browser.request('GET', course_url)
+            soap = bs(r.text, features='lxml')            
             for elem_a in soap.find_all('a'):
-                if self.sitelinks['submit_sublink_assign'] in elem_a['href'] or self.sitelinks['submit_sublink_turnitin'] in elem_a['href']:                    
-                    # name = elem_a.decode_contents()
-                    # name = name[name.find('<span class="instancename">')+ len('<span class="instancename">'):name.find('<span class="accesshide">')]                                        
+                if self.sitelinks['submit_sublink_assign'] in elem_a['href'] or self.sitelinks['submit_sublink_turnitin'] in elem_a['href']:
                     name = elem_a.get_text()
                     assignment_list.append((name, elem_a['href']))            
             return assignment_list
@@ -286,14 +287,14 @@ class Moodle(website.Website):
         #         print(each.get_attribute('innerHTML'))
 
             if 'upload_' in each.get_attribute('id'):
-                print(each.get_attribute('innerHTML'))
-    
+                print(each.get_attribute('innerHTML'))    
+
     def getGrades(self, coursecode):
         for each in self.sitemap:
             if coursecode in each[0]:                
                 url = self.sitelinks['grade'] + each[1][each[1].find('?id=') + len('?id='):]                
-                self.browser.get(url)
-                break
-        soup = bs(self.browser.page_source, features='lxml')
-        return soup.find('table').prettify()
+                r = self.browser.request('GET', url)                
+                soup = bs(r.text, features='lxml')
+                return soup.find('table').prettify()
+        return 'cannot found course'
         
