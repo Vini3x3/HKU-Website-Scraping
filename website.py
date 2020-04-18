@@ -1,9 +1,7 @@
-from bs4 import BeautifulSoup as bs
 from seleniumrequests import Firefox
 from seleniumrequests import Chrome
 from selenium import webdriver
 
-import traceback
 import time
 
 class Website:
@@ -33,23 +31,23 @@ class Website:
                 options.add_argument('-headless')
                 return Chrome(options=options)
         elif webscrape_settings['browser'] == 'FireFox':
-            if not webscrape_settings['headless']:          
+            if not webscrape_settings['headless']:                
                 return Firefox()
             else:
                 options = webdriver.FirefoxOptions()
-                options.add_argument('-headless')
+                options.add_argument('-headless')                
                 return Firefox(options=options)
         else:
             print('setting error')
             return
         
-    def universal_hku_login(self, browser, credential):
+    def util_universal_hku_login(self, browser, credential):
         username = browser.find_element_by_id('username')
         username.send_keys(credential['username'])
         password = browser.find_element_by_id('password')
         password.send_keys(credential['password'])
         password.submit()
-        time.sleep(1)    
+        time.sleep(1)
     
     def util_getELEMfromProperties(self, selenium_object, tag_name, feature_dict):
         """

@@ -1,12 +1,18 @@
 from bs4 import BeautifulSoup as bs
-from selenium import webdriver
+# from selenium import webdriver
 
 import traceback
 import time
 
 import website
+import weberror
 
 class Portal(website.Website):
+
+    """
+    Base Class Function
+    """
+
     def __init__(self, credential, webscrape_settings):        
         # storage        
         self.credential = credential
@@ -35,15 +41,14 @@ class Portal(website.Website):
         input a browser object and sign in
         """
         self.browser.get(self.sitelinks['login'])
-        self.universal_hku_login(self.browser, self.credential)
+        self.util_universal_hku_login(self.browser, self.credential)
 
     def logout(self):
         """
         exit by inputing a browser object
         """
         self.browser.get(self.sitelinks['home'])
-        signout = self.browser.find_element_by_link_text('Sign out')
-        signout.click()                
+        self.browser.find_element_by_link_text('Sign out').click()
 
     def getSiteMap(self):
         result = []        
@@ -51,14 +56,20 @@ class Portal(website.Website):
         soap = bs(r.text, features='lxml')
         for link in soap.find_all("a"):
             if link['href'][0:4] == 'http':
-                result.append(link['href'])
-        return result
+                result.append(link['href'])        
+        if len(result)<=0:
+            raise weberror.ScrapeError(0)
+        else:
+            return result
 
     def keepAlive(self):
-        self.browser.get(self.sitelinks['home'])
-        time.sleep(300)
+        self.browser.get(self.sitelinks['home'])        
 
-    def findWeeklySchedule(self, argv):
+    """
+    Extra Class Function
+    """
+
+    def getWeeklySchedule(self, argv):
         """
         extract the HTML weekly schedule
         argv = [date, starttime, endtime], where date is in 'dd/mm/yyyy' string format, and time is '8:00AM' format    
@@ -68,15 +79,17 @@ class Portal(website.Website):
         for link in self.sitemap:
             if self.sitelinks['weekSch'] in link:
                 weekly_schedule_url = link
-        self.browser.get(weekly_schedule_url)
-        soap = bs(self.browser.page_source, features='lxml')
-        frames = soap.find_all('frame')
-        # print(len(frames))
+        # self.browser.get(weekly_schedule_url)
+        r1 = self.browser.request('GET', weekly_schedule_url)
+        # soap = bs(self.browser.page_source, features='lxml')
+        soap = bs(r1.text, features='lxml')
+        frames = soap.find_all('frame')        
         for each in frames:
             if each['name'] == 'TargetContent':
-                weekly_schedule_url = each['src']
-        self.browser.get(weekly_schedule_url)
-        print('stage 1 ends')
+                weekly_schedule_url = each['src']        
+        self.browser.get(weekly_schedule_url)        
+
+        if self.debug: print('stage 1 ends')
 
         # stage 2: select the right week and time range
         date = self.browser.find_element_by_id('DERIVED_CLASS_S_START_DT')
@@ -90,12 +103,14 @@ class Portal(website.Website):
         end_time.send_keys(argv[2])
         refresh = self.browser.find_element_by_id('DERIVED_CLASS_S_SSR_REFRESH_CAL')
         refresh.click()
-        print('stage 2 ends')
+        
+        if self.debug: print('stage 2 ends')
 
         # stage 3: extract the data    
         soup = bs(self.browser.page_source, features='lxml')
         table = soup.find('table', {"id": "WEEKLY_SCHED_HTMLAREA"})
-        print('stage 3 ends')
+        
+        if self.debug: print('stage 3 ends')
         
         # stage 4: post processing
         table['class'] = 'table'
@@ -105,6 +120,8 @@ class Portal(website.Website):
         timeLabels = table.find_all('span', {'class': 'SSSTEXTWEEKLY'})
         for timeLabel in timeLabels:
             timeLabel.parent['class'] = 'table-warning'
+
+        if self.debug: print('stage 4 ends')
 
         return table.prettify()    
 
@@ -126,11 +143,13 @@ class Portal(website.Website):
                         tables = soup2.find_all('table', {'class': 'PSLEVEL1GRIDWBO'})                        
                         
                         # table [0] = course grades, table[1] = overall GPA
-                        s = tables[0].prettify()                        
+                        s = tables[0].prettify()
                         return s
                                     
-                return 'not found1'
-        return 'not found in sitemap'
+                # return 'not found1'
+                raise weberror.ScrapeError(0)
+        # return 'not found in sitemap'
+        raise weberror.ScrapeError(0)
 
     def getStudentGPA(self):
         for link in self.sitemap:
@@ -150,6 +169,8 @@ class Portal(website.Website):
                         s = tables[1].prettify()                        
                         return s
                                     
-                return 'not found1'
-        return 'not found in sitemap'
+                raise weberror.ScrapeError(0)
+                # return 'not found1'
+        # return 'not found in sitemap'
+        raise weberror.ScrapeError(0)
     
