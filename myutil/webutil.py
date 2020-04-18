@@ -28,52 +28,18 @@ def util_getELEMfromProperties(selenium_object, tag_name, feature_dict):
         if match:
             return target
 
-def util_HTMLtable2List(soup):
-    def rowelem(elem):
-        rows = elem.find_all('tr')
-        rows = [tr.find_all(['td','th']) for tr in rows]
-        for i in range(len(rows)):
-            for j in range(len(rows[i])):
-                rows[i][j] = rows[i][j].get_text().replace(u'\xa0', u' ').replace('\n', '').strip()
-        return rows
+def util_HTMLtable2List(HTML_str):
+    result = []    
+    soup = bs(HTML_str, features = 'lxml')    
     thead = soup.find('thead')
-    result = []
     if thead:
-        # trs = thead.find_all('tr')
-        # row = [tr.find_all(['td','th']) for tr in trs]
-        # row = [each.get_text() for each in row]
-        # result += row
-        result += rowelem(thead)
+        trs = thead.find_all('tr')
+        result += [tr.find_all(['td','th']) for tr in trs]
     tbody = soup.find('tbody')
     if tbody:
-        result += rowelem(tbody)
-        # trs = tbody.find_all('tr')
-        # result += [tr.find_all(['td','th']) for tr in trs]
-
-        # row = [tr.find_all(['td','th']) for tr in trs]
-        # row = [each.get_text() for each in row]
-        # result += row
+        trs = tbody.find_all('tr')
+        result += [tr.find_all(['td','th']) for tr in trs]
     if not thead and not tbody:
-        result += rowelem(soup)
-        # trs = soup.find_all('tr')        
-        # result += [tr.find_all(['td','th']) for tr in trs]
-    return result
-
-def util_soup2List(soup):
-    def rowelem(elem):
-        rows = elem.find_all('tr')
-        rows = [tr.find_all(['td','th']) for tr in rows]
-        for i in range(len(rows)):
-            for j in range(len(rows[i])):
-                rows[i][j] = rows[i][j].get_text().replace(u'\xa0', u' ').replace('\n', '').strip()
-        return rows
-    thead = soup.find('thead')
-    result = []
-    if thead:
-        result += rowelem(thead)
-    tbody = soup.find('tbody')
-    if tbody:
-        result += rowelem(tbody)        
-    if not thead and not tbody:
-        result += rowelem(soup)        
+        trs = soup.find_all('tr')        
+        result += [tr.find_all(['td','th']) for tr in trs]
     return result

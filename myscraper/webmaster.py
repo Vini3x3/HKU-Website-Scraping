@@ -58,10 +58,10 @@ class WebMaster:
     def createBrowser(self):
         self.printdebug('start')
         self.browser = NewBrowser(self.webscrape_settings)
-        self.printdebug('end')    
+        self.printdebug('end')
     def needBrowser(func, *args):
         def wrapper(self, *args):
-            self.mutex.acquire()            
+            self.mutex.acquire()
             self.printdebug('start')
             result = func(self, *args)
             self.printdebug('end')
@@ -77,26 +77,26 @@ class WebMaster:
         self.printdebug('start')
         self.printdebug(self.webscrape_settings['initialize-website'])
         if self.webscrape_settings['initialize-website']=='All':
-            for website_name in ['Portal', 'Moodle']:
-                self.createWebsiteManager(website_name)
+            for name in ['Portal', 'Moodle']:
+                self.createWebsiteManager(name)
         elif self.webscrape_settings['initialize-website']=='Only Portal':
             self.createWebsiteManager('Portal')
         self.printdebug('end')
     @needBrowser
-    def createWebsiteManager(self, website_name):
+    def createWebsiteManager(self, website_name):        
         self.printdebug('start')
         self.printdebug(website_name)
         tempdict = self.webscrape_settings.copy()
-        tempdict['site'] = website_name
+        tempdict['site'] = website_name        
         self.websites[website_name] = SiteManager(self.credential, tempdict)
         self.websites[website_name].start(self.browser)
-        self.printdebug('end')
+        self.printdebug('end')        
     @needBrowser
-    def deleteWebsiteManager(self, website_name):
+    def deleteWebsiteManager(self, website_name):        
         self.printdebug('start')
         self.websites[website_name].destroy(self.browser)
         del self.websites[website_name]
-        self.printdebug('end')
+        self.printdebug('end')        
     """
     -------------------------------------
     | Record Related                    |
@@ -118,7 +118,7 @@ class WebMaster:
     """
     def initThread(self):
         # multithreading for stayAlive
-        self.printdebug('start')
+        self.printdebug('start')        
         self.terminate_flag = threading.Event()
         self.keepAliveThread = threading.Thread(target=self.stayAlive)
         self.keepAliveThread.start()
@@ -128,8 +128,9 @@ class WebMaster:
         self.terminate_flag.set()
         self.keepAliveThread.join()
         self.printdebug('end')
+    
     def stayAlive(self):
-        while not self.terminate_flag.is_set():
+        while not self.terminate_flag.is_set():            
             self.printdebug('start')
             self.refresh()
             self.printdebug('end')
@@ -138,7 +139,7 @@ class WebMaster:
     @needBrowser
     def refresh(self):
         for each in self.websites.values():
-            each.refresh(self.browser)
+            each.refresh(self.browser)  
     """
     -------------------------------------
     | Core Development                  |
@@ -151,7 +152,7 @@ class WebMaster:
         return self.askManager(website_name, func_name, *args)
     @needBrowser
     def askManager(self, website_name, func_name, *args):
-        return self.websites[website_name].query(func_name, self.browser, *args)    
+        return self.websites[website_name].query(func_name, self.browser, *args)
     @needBrowser
     def test(self):
         self.printdebug('hello world')

@@ -26,8 +26,7 @@ from myscraper.NativeBrowser import *
 from bs4 import BeautifulSoup as bs
 from time import time
 from traceback import print_exc
-# from myutil.testsuit import testsuit2 as testsuit
-from myutil import testsuit
+from myutil.testsuit import testsuit2 as testsuit
 
 """settings"""
 browser_names = ['NewFirefox', 'NewChrome', 'NewEdge']
@@ -56,25 +55,18 @@ urls = [
 ]
 
 """test cases"""
-@testsuit.log('test', 1, 'get url')
-@testsuit.compileTest
-def test_get_url(browser):
-    browser.get(urls[0])
-    if browser.current_url != urls[0]:
-        return False
-@testsuit.log('test', 2, 'get page_source')
-@testsuit.compileTest
-def test_get_page_source(browser):
-    html = ''
+
+def test_get_url(browser, *_):    
+    browser.get(urls[0])         
+def test_get_page_source(browser, *_):
+    html = ''            
     html = browser.page_source
     if html != html_answer:
         print('page_source not equal')
         return False
     else:
         return True
-@testsuit.log('test', 3, 'simple wait')
-@testsuit.compileTest
-def test_simple_wait(browser):
+def test_simple_wait(browser, *_):    
     browser.get(urls[0])
     start_time = time()
     browser.wait(5)
@@ -83,9 +75,8 @@ def test_simple_wait(browser):
         return True
     else:
         return False
-@testsuit.log('test', 4, 'advanced wait')
-@testsuit.compileTest
-def test_advanced_wait(browser):
+
+def test_advanced_wait(browser, *_):
     browser.get(urls[1])
     start_time = time()
     browser.wait(5, 'presence_of_element_located', 'ID', 'aswift_0')
@@ -94,26 +85,19 @@ def test_advanced_wait(browser):
         return True
     else:
         return False
-@testsuit.log('test', 5, 'create tab')
-@testsuit.compileTest
-def test_create_tab(browser):
+def test_create_tab(browser, *_):
     browser.tab('firstsite', urls[2])
     browser.tab('secondsite', urls[3])
-@testsuit.log('test', 6, 'switch tab')
-@testsuit.compileTest
-def test_switch_tab(browser):
+def test_switch_tab(browser):    
     browser.tab(0)
     browser.tab('firstsite')        
-@testsuit.log('test', 7, 'destroy tab')
-@testsuit.compileTest
-def test_destroy_tab(browser):
-    browser.untab('secondsite')
-@testsuit.log('test', 8, 'destroy browser')
-@testsuit.compileTest
-def test_destroy_browser(browser):
+def test_destroy_tab(browser, *_):    
+        browser.untab('secondsite')
+def test_destroy_browser(browser, *_):        
     browser.quit()
 
-if __name__ == '__main__':    
+if __name__ == '__main__':
+    A = testsuit()
 
     for browser_name in browser_names:
         klass = globals()[browser_name]
@@ -128,27 +112,48 @@ if __name__ == '__main__':
             'destroy tab': None,    
             'destroy browser': None,
         }
-        testsuit.printlog('field', browser_name)
-        testsuit.printlog('test', 0, 'create browser')
+        A.log('field', browser_name)
+        A.log('test', 0, 'create browser')
         try:        
             browser = klass()
             test_result['create browser']=True
         except:
             test_result['create browser']=False
-        if test_result['create browser']:            
-            test_result['get url'] = test_get_url(browser)
-        if test_result['get url']:            
-            test_result['get page_source'] = test_get_page_source(browser)
-            test_result['simple wait'] = test_simple_wait(browser)
-            test_result['advanced wait'] = test_advanced_wait(browser)
-            test_result['create new tab'] = test_create_tab(browser)
-        if test_result['create new tab']:
-            test_result['switch tab'] = test_switch_tab(browser)        
-            test_result['destroy tab']=test_destroy_tab(browser)            
         if test_result['create browser']:
-            test_result['destroy browser']=test_destroy_browser(browser)
-        testsuit.printlog('doublesep')
-        testsuit.printlog('report', browser_name)
-        for key, val in test_result.items():
-            testsuit.printlog('result', key, str(val))        
-        testsuit.printlog('doublesep')
+            key = 'get url'
+            A.log('test', 1, key)
+            test_result[key] = A.compileTest(browser, testground=test_get_url)
+        if test_result['get url']:
+            key = 'get page_source'
+            A.log('test', 2, key)
+            test_result[key] = A.compileTest(browser, testground=test_get_page_source)        
+        if test_result['get url']:        
+            key = 'simple wait'
+            A.log('test', 3, 'simple wait')
+            test_result['simple wait'] = A.compileTest(browser, testground=test_simple_wait)
+        if test_result['get url']:                
+            key = 'advanced wait'
+            A.log('test', 4, key)
+            test_result[key] = A.compileTest(browser, testground=test_advanced_wait)
+        if test_result['get url']:
+            key = 'create new tab'
+            test_result[key] = test_create_tab(browser)
+            A.log('test', 5, key)
+            test_result['create new tab'] = A.compileTest(browser, testground=test_create_tab)
+        if test_result['create new tab']:        
+            key = 'switch tab'
+            A.log('test', 6, key)
+            test_result[key] = A.compileTest(browser, testground=test_switch_tab)        
+        if test_result['create new tab']:        
+            key = 'destroy tab'
+            A.log('test', 7, key)
+            test_result[key]=A.compileTest(browser, testground=test_destroy_tab)
+        if test_result['get url']:     
+            key = 'destroy browser'
+            A.log('test', 8, key)
+            test_result[key]=A.compileTest(browser, testground=test_destroy_browser)
+        A.log('doublesep')    
+        A.log('report', browser_name)
+        for key, val in test_result.items():        
+            A.log('result', key, str(val))
+        A.log('doublesep')
