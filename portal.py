@@ -1,40 +1,153 @@
 from bs4 import BeautifulSoup as bs
-from selenium import webdriver
+# from selenium import webdriver
 
-import traceback
 import time
 
-# login-logout-setup module
+import website
 
-def signin(browser, creditential, webscrape_settings):
-    """
-    input a browser object and sign in
-    """
-    browser.get(webscrape_settings['homepage'])
+class Portal(website.Website):
+    def __init__(self, credential, webscrape_settings):        
+        # storage        
+        self.credential = credential
+        self.sitelinks = {
+            'login': 'https://hkuportal.hku.hk/login.html',
+            'home': 'https://sis-eportal.hku.hk/psp/ptlprod/EMPLOYEE/EMPL/h/?tab=DEFAULT',
+            'weekSch': 'https://sis-eportal.hku.hk/psp/ptlprod/EMPLOYEE/HRMS/c/SA_LEARNER_SERVICES.SSR_SSENRL_SCHD_W',
+            'grades': 'https://sis-eportal.hku.hk/psp/ptlprod/EMPLOYEE/HRMS/c/Z_SS_MENU.Z_TSRPT_WEB_STDT.GBL?',
+            'grades2': 'https://sis-main.hku.hk/psc/sisprod/EMPLOYEE/HRMS/c/Z_SS_MENU.Z_TSRPT_WEB_STDT.GBL?',
+        }
+        self.debug = webscrape_settings['debug']        
+        # Let's rock and roll        
+        super().__init__(webscrape_settings)
+        self.login()
+        self.sitemap = self.getSiteMap()
 
-    username = browser.find_element_by_id('username')
-    username.send_keys(creditential['username'])
-    password = browser.find_element_by_id('password')
-    password.send_keys(creditential['password'])
-    password.submit()
-    time.sleep(1)
+    def __del__(self):
+        self.logout()
+        super().__del__()        
 
-def exit(browser, webscrape_settings):
-    """
-    exit by inputing a browser object
-    """
-    browser.get(webscrape_settings['exitpage'])
-    signout = browser.find_element_by_link_text('Sign out')
-    signout.click()
-    browser.quit()
+    def __str__(self):
+        return 'This is a Portal Instance'    
 
-def getPortalLinks(browser, webscrape_settings):
-    result = []
-    browser.get(webscrape_settings['exitpage'])
-    soap = bs(browser.page_source, features='lxml')
-    for link in soap.find_all("a"):
-        if link['href'][0:4] == 'http':
-            result.append(link['href'])
-    return result
+    def login(self):
+        """
+        input a browser object and sign in
+        """
+        self.browser.get(self.sitelinks['login'])
+        self.universal_hku_login(self.browser, self.credential)
 
-# weekly schedule module
+    def logout(self):
+        """
+        exit by inputing a browser object
+        """
+        self.browser.get(self.sitelinks['home'])
+        signout = self.browser.find_element_by_link_text('Sign out')
+        signout.click()                
+
+    def getSiteMap(self):
+        result = []
+        self.browser.get(self.sitelinks['home'])
+        soap = bs(self.browser.page_source, features='lxml')
+        for link in soap.find_all("a"):
+            if link['href'][0:4] == 'http':
+                result.append(link['href'])
+        return result
+
+    def keepAlive(self):
+        self.browser.get(self.sitelinks['home'])
+        time.sleep(300)
+
+    def findWeeklySchedule(self, argv):
+        """
+        extract the HTML weekly schedule
+        argv = [date, starttime, endtime], where date is in 'dd/mm/yyyy' string format, and time is '8:00AM' format    
+        """
+        # stage 1: get the frame of weekly schedule    
+        weekly_schedule_url = ''
+        for link in self.sitemap:
+            if self.sitelinks['weekSch'] in link:
+                weekly_schedule_url = link
+        self.browser.get(weekly_schedule_url)
+        soap = bs(self.browser.page_source, features='lxml')
+        frames = soap.find_all('frame')
+        # print(len(frames))
+        for each in frames:
+            if each['name'] == 'TargetContent':
+                weekly_schedule_url = each['src']
+        self.browser.get(weekly_schedule_url)
+        print('stage 1 ends')
+
+        # stage 2: select the right week and time range
+        date = self.browser.find_element_by_id('DERIVED_CLASS_S_START_DT')
+        date.clear()
+        date.send_keys(argv[0])
+        start_time = self.browser.find_element_by_id('DERIVED_CLASS_S_MEETING_TIME_START')    
+        start_time.clear()
+        start_time.send_keys(argv[1])
+        end_time = self.browser.find_element_by_id('DERIVED_CLASS_S_MEETING_TIME_END')
+        end_time.clear()
+        end_time.send_keys(argv[2])
+        refresh = self.browser.find_element_by_id('DERIVED_CLASS_S_SSR_REFRESH_CAL')
+        refresh.click()
+        print('stage 2 ends')
+
+        # stage 3: extract the data    
+        soup = bs(self.browser.page_source, features='lxml')
+        table = soup.find('table', {"id": "WEEKLY_SCHED_HTMLAREA"})
+        print('stage 3 ends')
+        
+        # stage 4: post processing
+        table['class'] = 'table'
+        timeLabels = table.find_all('span', {'class': 'SSSTEXTWEEKLYTIME'})
+        for timeLabel in timeLabels:
+            timeLabel.parent['class'] = 'font-weight-bold'
+        timeLabels = table.find_all('span', {'class': 'SSSTEXTWEEKLY'})
+        for timeLabel in timeLabels:
+            timeLabel.parent['class'] = 'table-warning'
+
+        return table.prettify()
+
+    def getStudentCourseGrades(self):        
+        for link in self.sitemap:                
+            if self.sitelinks['grades'] in link:               
+                self.browser.get(link)
+                soup = bs(self.browser.page_source, features='lxml')
+                for each in soup.find_all('frame'):
+                    
+                    if self.sitelinks['grades2'] in each['src']:
+                        
+                        self.browser.get(each['src'])                            
+                        
+                        soup2 = bs(self.browser.find_element_by_id('ACE_width').get_attribute('outerHTML'), features='lxml')
+                        tables = soup2.find_all('table', {'class': 'PSLEVEL1GRIDWBO'})                            
+                        print(len(tables))
+
+                        self.cache_HTML['course_grades'] = tables[0].decode_contents()
+                        self.cache_HTML['GPA'] = tables[1].decode_contents()
+                        # table [0] = course grades, table[1] = overall GPA
+                        return tables[0].decode_contents()
+                return 'not found1'
+        return 'not found2'
+            
+    
+    def getStudentGPA(self):        
+        for link in self.sitemap:                
+            if self.sitelinks['grades'] in link:               
+                self.browser.get(link)
+                soup = bs(self.browser.page_source, features='lxml')
+                for each in soup.find_all('frame'):
+                    
+                    if self.sitelinks['grades2'] in each['src']:
+                        
+                        self.browser.get(each['src'])
+                        
+                        soup2 = bs(self.browser.find_element_by_id('ACE_width').get_attribute('outerHTML'), features='lxml')
+                        tables = soup2.find_all('table', {'class': 'PSLEVEL1GRIDWBO'})                            
+
+                        self.cache_HTML['course_grades'] = tables[0].decode_contents()
+                        self.cache_HTML['GPA'] = tables[1].decode_contents()
+                        # table [0] = course grades, table[1] = overall GPA
+                        return tables[1].decode_contents()
+                                    
+                return 'not found1'
+        return 'not found2'

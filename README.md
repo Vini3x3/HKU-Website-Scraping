@@ -1,6 +1,13 @@
-# Function based
+# Selenium Only 
 
-This is the implemented version used in mid-FYP presentation.  
+This is the version that use selenium as the major browsing method.  
 
-There are only functions.  
+In short, that is `webdriver.get(url)` and `webdriver.post(url)`.  
 
+
+
+Required Libraries: 
+
+- `selenium`
+- `beautifulsoup`
+- `lxml`
