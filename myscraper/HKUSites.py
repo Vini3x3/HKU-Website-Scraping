@@ -197,8 +197,8 @@ class BasicPortal(Website):
         self.printdebug('start')
         browser.tab(self.sitename, self.sitelinks['login'])
         self.login(browser)
-        # browser.wait(2, 'presence_of_element_located', 'ID', 'ADMN_Z_HKU_STUDENTNOTICE_HMPG')        
-        # self.sitemap = self.getSiteMap(browser)
+        browser.wait(2, 'presence_of_element_located', 'ID', 'ADMN_Z_HKU_STUDENTNOTICE_HMPG')        
+        self.sitemap = self.getSiteMap(browser)
         self.printdebug('end')
     
     def login(self, browser):        
