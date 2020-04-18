@@ -10,7 +10,7 @@ class ScrapeError(Exception):
     		return 'Scrape Error: ' + 'Invalid Result'
     	else:
     		return 'Scrape Error: ' + 'Others'
-class CallError(Exception):     
+class CallError(Exception):
     def __init__(self, type):
     	self.type = type
     def __str__(self):
@@ -22,5 +22,7 @@ class CallError(Exception):
     		return 'Call Error: ' + 'Ambigious Function Call'
     	elif self.type == 3:
     		return 'Call Error: ' + 'Invalid Arguement'
+    	elif self.type == 4:
+    		return 'Call Error: ' + 'Missing Arguement'
     	else:
     		return 'Call Error: ' + 'Others'

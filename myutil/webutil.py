@@ -1,6 +1,6 @@
 from time import sleep
 from bs4 import BeautifulSoup as bs
-import weberror
+from myutil import weberror
 
 def util_universal_hku_login(browser, credential):
     username = browser.find_element_by_id('username')
