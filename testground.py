@@ -10,8 +10,8 @@ from time import time
 
 def inittest():
     credential = {
-        'username': 'u3537502',
-        'password': 'YourMother62329197',
+        'username': '',
+        'password': '',
     }
 
     webscrape_settings = {
@@ -90,8 +90,8 @@ from myscraper.webmaster import WebMaster
 import re
 
 credential = {
-    'username': 'u3537502',
-    'password': 'YourMother62329197',
+    'username': '',
+    'password': '',
 }
 
 webscrape_settings = {

@@ -37,8 +37,8 @@ This set contains 3 major things that you should know:
 """
 
 credential = {
-    'username': 'u3537502',
-    'password': 'YourMother62329197',
+    'username': '',
+    'password': '',
 }
 
 webmaster = WebMaster(credential)
@@ -105,8 +105,8 @@ testsuit.printlog('doublesep')
 testsuit.printlog('field', 'Advanced Testsuit3')
 def inittest():
     credential = {
-        'username': 'u3537502',
-        'password': 'YourMother62329197',
+        'username': '',
+        'password': '',
     }    
     webmaster = WebMaster(credential)    
     return webmaster

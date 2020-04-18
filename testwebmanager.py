@@ -34,8 +34,8 @@ def test_destroy_manager(browser, manager):
     manager.destroy(browser)
 
 credential = {
-    'username': 'u3537502',
-    'password': 'YourMother62329197',
+    'username': '',
+    'password': '',
 }
 
 testsuit.printlog('field','WebManager')
