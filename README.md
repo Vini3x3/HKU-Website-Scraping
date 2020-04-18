@@ -1,37 +1,34 @@
-# Webmaster
+# Component  and Structural Upgrade
 
-Use a master program to manage the `Website` instance.  
+##  Cross site Cookies
 
-Below techniques are involved in this manager: 
+To take advantage of the cross-site login, two approaches are drafted: 
 
-- Indirect control - call method of instance by name, check callable methods in instance
-- Multithreading - `keepAlive()` for every 3 minutes
-- Detect `last-modified` - check for last update of webpage
-- Caching - cache for unmodified and searched result
-- Tracking - track for user behaviour
+- Open new tab in browser to reuse the cookies
+- Share cookies among browser
 
-On top of that, there is a guarantee of all the `Website` instance have the same set of base class method.  
+The first approach is under test and succeeded.  
 
-On the other hand, more utility methods are implemented in `Website` class to reduce the import library in higher-level files: 
+## Structural Upgrade
 
-- `WaitUntil()` - implement  `selenium.webdriver.support.ui import WebDriverWait`, `from selenium.webdriver.support import expected_conditions as EC` and `from selenium.webdriver.common.by import By as BY`
+Apart from making the functions complete, it is possible to separate the functions into 3 components to avoid god-class, especially for only Moodle: 
 
-Therefore, the import library should be like this: 
+- Trace function call
+- Cache management
+- Refresh periodically
+- Switch tab
 
-| Class File         | Library                                                      |
-| ------------------ | ------------------------------------------------------------ |
-| Website            | from bs4 import BeautifulSoup as bs                          |
-|                    | from selenium import webdriver                               |
-|                    | from selenium.webdriver.support.ui import WebDriverWait      |
-|                    | from selenium.webdriver.support import expected_conditions as EC |
-|                    | from selenium.webdriver.common.by import By as BY            |
-|                    | from seleniumrequests import Firefox                         |
-|                    | from seleniumrequests import Chrome                          |
-| Derives of Website | from bs4 import BeautifulSoup as bs                          |
-|                    | import website                                               |
-|                    | import traceback                                             |
-| Webmaster          | import Portal, Moodle, Library, ...                          |
-|                    | import traceback                                             |
+Note that the four components are separated between hierarchy: 
+
+- Browser level: incorporate the switch tab function
+- Website level: has a component for cache management
+- Webmaster level: has a structure for tracing function call and refresh periodically
 
 
+## Accident
 
+However, the selenium-request is only workable with firefox, thus a big hinder to the loading speed.  Therefore, this version is abandoned, even though all of the code is working in firefox.  
+
+Neither Requestium is considered, as it only works in Chrome, and on top of that, it does not show how it will be faster.  
+
+Besides, the structure is too complicated that we need another structural upgrade.  The 3 level structure if further breakdown into 4 levels.  
