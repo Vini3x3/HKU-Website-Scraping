@@ -2,14 +2,9 @@ from myutil.testsuit import testsuit3 as testsuit
 from myscraper.webmaster import WebMaster
 
 credential = {
-    'username': 'u3537502',
-    'password': 'YourMother62329197',
+    'username': '',
+    'password': '',
 }
-
-# credential = {
-#     'username': 'approach',
-#     'password': '123456789yht',
-# }
 
 webscrape_settings = {
     # 'browser': 'Edge',
