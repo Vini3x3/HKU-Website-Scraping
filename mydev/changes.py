@@ -16,7 +16,7 @@ def SiteManager(credential, webscrape_settings):
             klass = globals()[webscrape_settings['site']+'Manager']
             return klass(credential, webscrape_settings)
 
-class MoodleManager(BasicMoodleManager):    
+class MoodleManager(BasicMoodleManager):
     """
     -------------------------------------
     | To be add into base template      |
@@ -28,49 +28,50 @@ class MoodleManager(BasicMoodleManager):
     | Extensions                        |
     -------------------------------------
     """
-    def __init___(self, credential, webscrape_settings):
-        super().__init__(credential, webscrape_settings)
-        self.contenttype = {
-            '/help.php'                     : 'help',
-            '/pluginfile.php'               : 'force_download',
 
-            '/grade/report/index.php'       : 'grade',
-            '/course/view.php'              : 'course',
-            '/user/index.php'               : 'contact',
-            '/user/view.php'                : 'user',
-            '/mod/resource/view.php'        : 'resource',
-            '/mod/assign/view.php'          : 'submit_file_upload',
-            '/mod/turnitintooltwo/view.php' : 'submit_turnitin',
-            '/mod/url/view.php'             : 'url',
-            '/mod/page/view.php'            : 'page',
-            '/mod/forum/view.php'           : 'forum',
-            '/mod/forum/discuss.php'        : 'discussion',
-            '/mod/quiz/view.php'            : 'quiz',   
-            '/mod/folder/view.php'          : 'folder',
-            '/mod/questionnaire/view.php'   : 'questionnaire',
-            '/mod/choice/view.php'          : 'choice',     
-            '/mod/choicegroup/view.php'     : 'choicegroup',
-            '/mod/lti/view.php'             : 'lti',
-            '/mod/feedback/view.php'        : 'feedback',
-            '/mod/vpl/view.php'             : 'vpl',
+    def query(self, func_name, *args):
+        if hasattr(self, func_name):
+            func = getattr(self, func_name)
+            self.printdebug('call function')
+            result = func(*args)
+            self.printdebug('end')
+            return result
+        else:
+            return self.scrape(func_name, *args)
 
-            '/my/'                          : 'submission_deadlines',
-        }
-        
+    def sayHello(self, browser):
+        print('hi')
+
+    # def findCourseByKeywords(self, browser, keywords):
+    #     return self.website.sitemapSearch(keywords)
+    #
+    # def findAllCoursesByKeywords(self, browser, keywords):
+    #     return self.website.sitemapSearchAll(keywords)
+
     
 class PortalManager(BasicPortalManager):
     """
     -------------------------------------
     | To be add into base template      |
     -------------------------------------
-    """ 
-    
+    """
+    def query(self, func_name, *args):
+        if hasattr(self, func_name):
+            func = getattr(self, func_name)
+            self.printdebug('call function')
+            result = func(*args)
+            self.printdebug('end')
+            return result
+        else:
+            return self.scrape(func_name, *args)
     """
     -------------------------------------
     | Extensions                        |
     -------------------------------------
     """
-
-
-
-
+    def findInvoiceQuery(self, browser, queries):
+        temp = self.website.findInvoice(browser)
+        result = {}
+        for _ in queries:
+            result[_] = temp[_]
+        return result
