@@ -43,8 +43,8 @@ def test_destroy_webmaster(webmaster):
     del webmaster
 
 credential = {
-    'username': '',
-    'password': '',
+    'username': 'u3537502',
+    'password': 'YourMother62329197',
 }
 test_result = {
     'create webmaster': None,

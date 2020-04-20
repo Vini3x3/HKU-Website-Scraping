@@ -136,7 +136,7 @@ def errorTest(func, *args):
         try:
             func(*args)
         except:   
-            print_exc()        
+            print_exc()
     return wrapper
 def log(formattype, tab=None, msg=None):
     def real_decorator(function):
