@@ -9,4 +9,5 @@ def list_files(startpath):
         for f in files:
             print('{}{}'.format(subindent, f))
 
-list_files('.')
+if __name__ == "__main__":
+    list_files('.')

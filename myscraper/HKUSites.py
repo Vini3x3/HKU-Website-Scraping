@@ -14,7 +14,7 @@ class Website:
         self.sitelinks.clear()
         self.cache.clear()
     def __str__(self):
-        return 'This is a Webite instance'
+        return 'This is a Website instance'
     def printdebug(self, msg):
         if self.debug: print('[ {} ] {:20} > {:20} : {}'.format(datetime.now(), self.__class__.__name__, inspect.stack()[1][3], msg))
     def getSiteMap(self):
@@ -22,8 +22,6 @@ class Website:
     def login(self):
         pass
     def logout(self):
-        pass
-    def keepAlive(self):
         pass
     def keepAlive(self, browser):
         self.printdebug('start')
@@ -46,7 +44,7 @@ class BasicMoodle(Website):
     -------------------------------------
     | Object Basics                     |
     -------------------------------------
-    """    
+    """
     def __init__(self, credential, webscrape_settings=None):        
         super().__init__()
         self.sitelinks = {
@@ -99,7 +97,7 @@ class BasicMoodle(Website):
         self.printdebug('start')
         browser.tab(self.sitename, self.sitelinks['login'])
         self.login(browser)
-        browser.wait(3, 'presence_of_element_located', 'ID', 'frontpage-course-list')        
+        browser.wait(3, 'presence_of_element_located', 'ID', 'frontpage-course-list')
         self.sitemap = self.getSiteMap(browser)
         self.printdebug('end')
 
@@ -107,7 +105,7 @@ class BasicMoodle(Website):
         self.printdebug('start')
         browser.tab(self.sitename)
         browser.get(self.sitelinks['login'])
-        browser.find_element_by_id('login-nav-btn').click()        
+        browser.find_element_by_id('login-nav-btn').click()
         browser.wait(1)
         self.printdebug('branch')
         if browser.current_url == self.sitelinks['home'] or browser.current_url == self.sitelinks['home']+'/':            
@@ -139,7 +137,7 @@ class BasicMoodle(Website):
                 exit_link = link
         browser.get(exit_link)
         self.printdebug('end')
-    
+
     def getSiteMap(self, browser):
         self.printdebug('start')
         browser.tab(self.sitename)        
@@ -153,7 +151,7 @@ class BasicMoodle(Website):
             course_name = box.find('h3').get_text()
             link_map.append((course_name, 'course', int(course_id)))
         self.printdebug('end')
-        return link_map    
+        return link_map
     
     """
     -------------------------------------
@@ -167,8 +165,7 @@ class BasicPortal(Website):
     """
     def __init__(self, credential, webscrape_settings=None):
         # storage        
-        super().__init__()
-        self.credential = credential
+        super().__init__()        
         self.sitelinks = {
             'login'                 : 'https://hkuportal.hku.hk/login.html',
 
@@ -179,10 +176,10 @@ class BasicPortal(Website):
             'invoice'               : 'https://sis-eportal.hku.hk/psp/ptlprod/EMPLOYEE/HRMS/c/SA_LEARNER_SERVICES.SSF_SS_CHRGS_DUE.GBL?',
             'receipt'               : 'https://sis-eportal.hku.hk/psp/ptlprod/EMPLOYEE/HRMS/c/SA_LEARNER_SERVICES.SSF_SS_PMT_HIST.GBL?',
         }
-        self.sitename = 'Portal'
-        self.credential = credential        
+        self.credential = credential
+        self.sitename = 'Portal'        
         if webscrape_settings and 'verbose' in webscrape_settings and webscrape_settings['verbose']>0:
-            self.debug = True            
+            self.debug = True
         else:
             self.debug = False
 
@@ -197,7 +194,7 @@ class BasicPortal(Website):
         self.printdebug('start')
         browser.tab(self.sitename, self.sitelinks['login'])
         self.login(browser)
-        browser.wait(2, 'presence_of_element_located', 'ID', 'ADMN_Z_HKU_STUDENTNOTICE_HMPG')        
+        # browser.wait(2, 'presence_of_element_located', 'ID', 'ADMN_Z_HKU_STUDENTNOTICE_HMPG')        
         self.sitemap = self.getSiteMap(browser)
         self.printdebug('end')
     
@@ -215,7 +212,7 @@ class BasicPortal(Website):
     
     def getSiteMap(self, browser):        
         self.printdebug('start')
-        result = []        
+        result = []
         browser.tab(self.sitename)
         browser.get(self.sitelinks['home'])
         soap = bs(browser.page_source, features='lxml')
@@ -225,7 +222,7 @@ class BasicPortal(Website):
         if len(result)<=0:
             raise weberror.ScrapeError(0)
         else:
-            self.printdebug('end')
+            self.printdebug('end')            
             return result
     """
     -------------------------------------
