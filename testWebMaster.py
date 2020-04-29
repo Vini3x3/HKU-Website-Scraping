@@ -9,34 +9,45 @@ from myscraper.webmaster import WebMaster
 from myutil import testsuit
 import re
 
+
 @testsuit.log('test', 1, 'needBrowser')
 @testsuit.compileTest
 def test_needBrowser(webmaster):
     webmaster.test()
+
+
 @testsuit.log('test', 2, 'refresh')
 @testsuit.compileTest
 def test_refresh(webmaster):
     webmaster.refresh()
+
+
 @testsuit.log('test', 3, 'query')
 @testsuit.compileTest
 def test_query(webmaster):
-    webmaster.query('Moodle','getSiteMap')
+    webmaster.query('Moodle', 'get_sitemap')
+
+
 @testsuit.log('test', 4, 'record')
 @testsuit.compileTest
 def test_record(webmaster):
-    record = webmaster.getRecord()
+    record = webmaster.get_record()
     r = re.compile('[ .*-.*-.* .*:.*:.*..* ] .* > .* : .*')
     if r.match(record[0]) is not None:    
         print ('matches')
-        if 'Moodle' in record[0] and 'getSiteMap' in record[0]:
+        if 'Moodle' in record[0] and 'get_sitemap' in record[0]:
             return True
         else:
             return False
     return False
+
+
 @testsuit.log('test', 5, 'terminateThread')
 @testsuit.compileTest
 def test_terminateThread(webmaster):
-    webmaster.terminateThread()
+    webmaster.cancel()
+
+
 @testsuit.log('test', 6, 'destroy webmaster')
 @testsuit.compileTest
 def test_destroy_webmaster(webmaster):
@@ -59,11 +70,11 @@ test_result = {
 if __name__ == '__main__':    
     testsuit.printlog('field', 'Web Master')
     testsuit.printlog('test', 0, 'create webmaster')
-    try:        
-        webmaster = WebMaster(credential)
-        test_result['create webmaster']=True
+    try:
+        webmaster = WebMaster(credential['username'], credential['password'])
+        test_result['create webmaster'] = True
     except:
-        test_result['create webmaster']=False
+        test_result['create webmaster'] = False
     if test_result['create webmaster']:
         test_result['needBrowser'] = test_needBrowser(webmaster)
     if test_result['needBrowser']:
@@ -76,5 +87,5 @@ if __name__ == '__main__':
     testsuit.printlog('doublesep')
     testsuit.printlog('report', 'WebMaster')
     for key, val in test_result.items():
-        testsuit.printlog('result', key, str(val))        
+        testsuit.printlog('result', key, str(val))
     testsuit.printlog('doublesep')
