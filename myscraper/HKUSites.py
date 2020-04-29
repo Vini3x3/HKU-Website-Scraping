@@ -4,15 +4,15 @@ from myutil import webutil, weberror
 
 from datetime import datetime
 import inspect
-from time import time
+from time import time, sleep
 from random import random
-
 
 """
 -------------------------------------
 | Global Functions                  |
 -------------------------------------
 """
+
 
 # Switch function to render requested object
 def getWebsite(name, credential, settings=None):
@@ -23,6 +23,7 @@ def getWebsite(name, credential, settings=None):
     else:
         raise weberror.CallError(3)
 
+
 # Decorator for switing tab
 def switchTab(func, *args):
     def wrapper(self, browser, *args):
@@ -30,6 +31,19 @@ def switchTab(func, *args):
         return func(self, browser, *args)
 
     return wrapper
+
+
+def probeWebpage(key):
+    def decorator(func):
+        def wrapper(self, browser, *args):
+            url = self.sitelinks[key]
+            browser.get(url)
+            if url not in self.htmlcache.keys() or self.htmlcache[url] != len(browser.page_source):
+                self.mycache[self.hashfunc(url)] = func(browser, *args)
+            return self.mycache[self.hashfunc(url)]
+
+    return decorator
+
 
 class Website:
     """
@@ -50,7 +64,7 @@ class Website:
         self.credential = credential
         if 'cachesize' in webscrape_settings:
             self.cachesize = webscrape_settings['cachesize']
-        if webscrape_settings and 'verbose' in webscrape_settings and webscrape_settings['verbose']>0:
+        if webscrape_settings and 'verbose' in webscrape_settings and webscrape_settings['verbose'] > 0:
             self.debug = True
         else:
             self.debug = False
@@ -70,7 +84,8 @@ class Website:
     """
 
     def printdebug(self, msg):
-        if self.debug: print('[ {} ] {:20} > {:20} : {}'.format(datetime.now(), self.__class__.__name__, inspect.stack()[1][3], msg))
+        if self.debug: print(
+            '[ {} ] {:20} > {:20} : {}'.format(datetime.now(), self.__class__.__name__, inspect.stack()[1][3], msg))
 
     def getSiteMap(self):
         pass
@@ -103,13 +118,18 @@ class Website:
         browser.untab(self.sitename)
         self.printdebug('end')
 
+    def start(self, browser):
+        pass
+
+
 class Moodle(Website):
     """
     -------------------------------------
     | Object Basics                     |
     -------------------------------------
     """
-    def __init__(self, credential, webscrape_settings=None):        
+
+    def __init__(self, credential, webscrape_settings=None):
         super().__init__(credential, webscrape_settings)
         self.sitelinks = {
             'home': 'https://moodle.hku.hk',
@@ -117,16 +137,18 @@ class Moodle(Website):
             'login_sublink_1': 'https://moodle.hku.hk/login/index.php?authCAS=CAS',
             'login_sublink_2': 'https://moodle.hku.hk/login/index.php',
             'logout': 'https://moodle.hku.hk/login/logout.php?sesskey=',
-        } 
+        }
         self.sitename = 'Moodle'
 
     def __str__(self):
         return 'This is a Moodle Instance'
+
     """
     -------------------------------------
     | Core Development                  |
     -------------------------------------
-    """ 
+    """
+
     def start(self, browser):
         self.printdebug('start')
         browser.tab(self.sitename, self.sitelinks['login'])
@@ -142,7 +164,7 @@ class Moodle(Website):
         browser.find_element_by_id('login-nav-btn').click()
         browser.wait(1)
         self.printdebug('branch')
-        if browser.current_url == self.sitelinks['home'] or browser.current_url == self.sitelinks['home']+'/':            
+        if browser.current_url == self.sitelinks['home'] or browser.current_url == self.sitelinks['home'] + '/':
             self.printdebug('end case 1')
         else:
             if browser.current_url == self.sitelinks['login_sublink_2']:
@@ -159,14 +181,14 @@ class Moodle(Website):
     def logout(self, browser):
         self.printdebug('start')
         browser.tab(self.sitename)
-        exit_link = ''        
+        exit_link = ''
         browser.get(self.sitelinks['home'])
         response_html = browser.page_source
         soap = bs(response_html, features='lxml')
-        menu = soap.find('ul',{'id':'action-menu-0-menu'})    
+        menu = soap.find('ul', {'id': 'action-menu-0-menu'})
         elem_as = menu.find_all('a')
         links = [elem_a['href'] for elem_a in elem_as]
-        for link in links:        
+        for link in links:
             if self.sitelinks['logout'] in link:
                 exit_link = link
         browser.get(exit_link)
@@ -185,12 +207,13 @@ class Moodle(Website):
             link_map.append((courselink.get_text(strip=True), courselink['href']))
         self.printdebug('end')
         return link_map
-    
+
     """
     -------------------------------------
     | Extensions                        |
     -------------------------------------
     """
+
     def findCourseByKeywords(self, browser, keywords):
         for row in self.sitemap:
             if keywords.lower() in row[0].lower():
@@ -274,17 +297,16 @@ class Moodle(Website):
         browser.get(url)
         browser.wait(1)
         soup = bs(browser.page_source, features='lxml')
-        div = soup.find('div', {'id': 'myoverview_timeline_view'})
-        # deadlines = div.findAll('li', {'class': 'event-list-item'})
-        deadlines = div.findAll('li', {'class': 'event-list-item'})
-        print(len(deadlines))
+        div = soup.find('div', id='myoverview_timeline_view')
+        deadlines = div.findAll('li', class_='event-list-item')
+        # print(len(deadlines))
         result = []
 
         for deadline in deadlines:
             # link = deadline.find('div', class_='event-name text-truncate')
             link = deadline.find('a', class_='event-name')
             deadlinename = link.get_text(strip=True)
-            print(deadlinename)
+            # print(deadlinename)
             self.printdebug(deadlinename)
             deadlinelink = link['href']
             self.printdebug(deadlinelink)
@@ -297,52 +319,56 @@ class Moodle(Website):
             })
         return result
 
+
 class Portal(Website):
     """
     -------------------------------------
     | Object Basics                     |
     -------------------------------------
     """
+
     def __init__(self, credential, webscrape_settings=None):
-        # storage        
+        # storage
         super().__init__(credential, webscrape_settings)
         self.sitelinks = {
-            'login'                 : 'https://hkuportal.hku.hk/login.html',
-            'home'                  : 'https://sis-eportal.hku.hk/psp/ptlprod/EMPLOYEE/EMPL/h/?tab=DEFAULT',
+            'login': 'https://hkuportal.hku.hk/login.html',
+            'home': 'https://sis-eportal.hku.hk/psp/ptlprod/EMPLOYEE/EMPL/h/?tab=DEFAULT',
+            'logout': 'https://sis-eportal.hku.hk/psp/ptlprod/EMPLOYEE/EMPL/?cmd=logout',
 
-            'weekSch'               : 'https://sis-main.hku.hk/psc/sisprod/EMPLOYEE/HRMS/c/SA_LEARNER_SERVICES.SSR_SSENRL_SCHD_W.GBL',
-            'transcript'            : 'https://sis-main.hku.hk/psc/sisprod/EMPLOYEE/HRMS/c/Z_SS_MENU.Z_TSRPT_WEB_STDT.GBL',
-            'invoice'               : 'https://sis-main.hku.hk/psc/sisprod/EMPLOYEE/HRMS/c/SA_LEARNER_SERVICES.SSF_SS_CHRGS_DUE.GBL',
-            'receipt'               : 'https://sis-main.hku.hk/psc/sisprod/EMPLOYEE/HRMS/c/SA_LEARNER_SERVICES.SSF_SS_PMT_HIST.GBL',
-            'activity'              : 'https://sis-main.hku.hk/psc/sisprod/EMPLOYEE/HRMS/c/SA_LEARNER_SERVICES.SSF_SS_ACCT_ACTVTY.GBL',
+            'weekSch': 'https://sis-main.hku.hk/psc/sisprod/EMPLOYEE/HRMS/c/SA_LEARNER_SERVICES.SSR_SSENRL_SCHD_W.GBL',
+            'transcript': 'https://sis-main.hku.hk/psc/sisprod/EMPLOYEE/HRMS/c/Z_SS_MENU.Z_TSRPT_WEB_STDT.GBL',
+            'invoice': 'https://sis-main.hku.hk/psc/sisprod/EMPLOYEE/HRMS/c/SA_LEARNER_SERVICES.SSF_SS_CHRGS_DUE.GBL',
+            'receipt': 'https://sis-main.hku.hk/psc/sisprod/EMPLOYEE/HRMS/c/SA_LEARNER_SERVICES.SSF_SS_PMT_HIST.GBL',
+            'activity': 'https://sis-main.hku.hk/psc/sisprod/EMPLOYEE/HRMS/c/SA_LEARNER_SERVICES.SSF_SS_ACCT_ACTVTY.GBL',
         }
         self.sitename = 'Portal'
 
     def __str__(self):
         return 'This is a Portal Instance'
+
     """
     -------------------------------------
     | Core Development                  |
     -------------------------------------
-    """ 
+    """
+
     def start(self, browser):
         self.printdebug('start')
         browser.tab(self.sitename, self.sitelinks['login'])
         self.login(browser)
-        # browser.wait(2, 'presence_of_element_located', 'ID', 'ADMN_Z_HKU_STUDENTNOTICE_HMPG')        
+        # browser.wait(2, 'presence_of_element_located', 'ID', 'ADMN_Z_HKU_STUDENTNOTICE_HMPG')
         self.sitemap = self.getSiteMap(browser)
         self.printdebug('end')
-    
-    def login(self, browser):        
+
+    def login(self, browser):
         self.printdebug('start')
         browser.get(self.sitelinks['login'])
         webutil.util_universal_hku_login(browser, self.credential)
         self.printdebug('end')
 
-    def logout(self,browser):        
+    def logout(self, browser):
         self.printdebug('start')
-        browser.get(self.sitelinks['home'])
-        browser.find_element_by_link_text('Sign out').click()
+        browser.get(self.sitelinks['logout'])
         self.printdebug('end')
 
     @switchTab
@@ -358,6 +384,7 @@ class Portal(Website):
             link_map.append((courselink.get_text(strip=True), courselink['href']))
         self.printdebug('end')
         return link_map
+
     """
     -------------------------------------
     | Extensions                        |
@@ -366,6 +393,7 @@ class Portal(Website):
 
     @switchTab
     def findWeeklySchedule(self, browser, targetdate, starttime, endtime):
+
         """
         extract the HTML weekly schedule
         date, starttime, endtime, where date is in 'dd/mm/yyyy' string format, and time is '8:00AM' format
@@ -390,29 +418,31 @@ class Portal(Website):
         end_time = browser.find_element_by_id('DERIVED_CLASS_S_MEETING_TIME_END')
         end_time.clear()
         end_time.send_keys(endtime)
-        refresh = browser.find_element_by_id('DERIVED_CLASS_S_SSR_REFRESH_CAL')
+        refresh = browser.find_element_by_id('DERIVED_CLASS_S_SSR_REFRESH_CAL$8$')
         refresh.click()
 
         self.printdebug('stage 2 ends')
 
-        # stage 3: extract the data
+        # stage 3: scrape data
+        browser.wait(5, 'invisibility_of_element_located', 'ID', 'WAIT_win0')
+        browser.wait(1)
         soup = bs(browser.page_source, features='lxml')
-        table = soup.find('table', {"id": "WEEKLY_SCHED_HTMLAREA"})
+        timetable = soup.find('table', id='WEEKLY_SCHED_HTMLAREA')
 
         self.printdebug('stage 3 ends')
 
         # stage 4: post processing
-        table['class'] = 'table'
-        timeLabels = table.find_all('span', {'class': 'SSSTEXTWEEKLYTIME'})
+        timetable['class'] = 'table'
+        timeLabels = timetable.find_all('span', {'class': 'SSSTEXTWEEKLYTIME'})
         for timeLabel in timeLabels:
             timeLabel.parent['class'] = 'font-weight-bold'
-        timeLabels = table.find_all('span', {'class': 'SSSTEXTWEEKLY'})
+        timeLabels = timetable.find_all('span', {'class': 'SSSTEXTWEEKLY'})
         for timeLabel in timeLabels:
             timeLabel.parent['class'] = 'table-warning'
 
         self.printdebug('stage 4 ends')
 
-        result = table
+        result = timetable.prettify()
         # breakpoint
         self.mycache[self.hashfunc(inspect.stack()[0][3], targetdate, starttime, endtime)] = result
         # breakpoint
@@ -468,3 +498,69 @@ class Portal(Website):
         self.mycache[self.hashfunc(inspect.stack()[0][3])] = result
         # breakpoint
         return result
+
+    def findWeeklySch(self, browser, targetdate, starttime, endtime):
+
+        """
+        extract the HTML weekly schedule
+        date, starttime, endtime, where date is in 'dd/mm/yyyy' string format, and time is '8:00AM' format
+        """
+        # stage 1: get the page of weekly schedule
+        weekly_schedule_url = self.sitelinks['weekSch']
+        # breakpoint
+        if self.probe(browser, weekly_schedule_url):
+            return self.mycache[self.hashfunc(inspect.stack()[0][3], targetdate, starttime, endtime)]
+        # breakpoint
+        browser.get(weekly_schedule_url)
+
+        self.printdebug('stage 1 ends')
+
+        # stage 2: select the right week and time range
+        date = browser.find_element_by_id('DERIVED_CLASS_S_START_DT')
+        date.clear()
+        date.send_keys(targetdate)
+        start_time = browser.find_element_by_id('DERIVED_CLASS_S_MEETING_TIME_START')
+        start_time.clear()
+        start_time.send_keys(starttime)
+        end_time = browser.find_element_by_id('DERIVED_CLASS_S_MEETING_TIME_END')
+        end_time.clear()
+        end_time.send_keys(endtime)
+        refresh = browser.find_element_by_id('DERIVED_CLASS_S_SSR_REFRESH_CAL$8$')
+        refresh.click()
+
+        self.printdebug('stage 2 ends')
+
+        # stage 3: scrape data
+        browser.wait(5, 'invisibility_of_element_located', 'ID', 'WAIT_win0')
+        browser.wait(1)
+        soup = bs(browser.page_source, features='lxml')
+        timetable = soup.find('table', id='WEEKLY_SCHED_HTMLAREA')
+
+        self.printdebug('stage 3 ends')
+
+        # stage 4: extract data
+        result = []
+        trs = timetable.find_all('tr')
+        for i in range(len(trs)):
+            if i == 0:
+                ths = trs[i].find_all('th')
+            else:
+                tds = trs[i].find_all('td')
+                for j in range(len(tds)):
+                    time_slot = tds[j].find('span', {'style': 'color:rgb(0,0,0);background-color:rgb(182,209,146);'})
+                    if time_slot:
+                        data_pack_1 = time_slot.decode_contents().split('<br/>')
+                        data_pack_2 = ths[j + 1].decode_contents().replace('\n', '').split('<br/>')
+                        result.append({
+                            'course': data_pack_1[0],
+                            'date': data_pack_2[1],
+                            'dow': data_pack_2[0],
+                            'time': data_pack_1[2],
+                            'location': data_pack_1[3]
+                        })
+
+        # breakpoint
+        self.mycache[self.hashfunc(inspect.stack()[0][3], targetdate, starttime, endtime)] = result
+        # breakpoint
+        return result
+
