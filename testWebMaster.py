@@ -12,7 +12,7 @@ import re
 
 @testsuit.log('test', 1, 'needBrowser')
 @testsuit.compileTest
-def test_needBrowser(webmaster):
+def test_need_browser(webmaster):
     webmaster.test()
 
 
@@ -44,7 +44,7 @@ def test_record(webmaster):
 
 @testsuit.log('test', 5, 'terminateThread')
 @testsuit.compileTest
-def test_terminateThread(webmaster):
+def test_terminate_thread(webmaster):
     webmaster.cancel()
 
 
@@ -71,18 +71,18 @@ if __name__ == '__main__':
     testsuit.printlog('field', 'Web Master')
     testsuit.printlog('test', 0, 'create webmaster')
     try:
-        webmaster = WebMaster(credential['username'], credential['password'])
+        webmaster = WebMaster(credential['username'], credential['password'], headless=False)
         test_result['create webmaster'] = True
     except:
         test_result['create webmaster'] = False
     if test_result['create webmaster']:
-        test_result['needBrowser'] = test_needBrowser(webmaster)
+        test_result['needBrowser'] = test_need_browser(webmaster)
     if test_result['needBrowser']:
         test_result['refresh'] = test_refresh(webmaster)
         test_result['query'] = test_query(webmaster)
         test_result['record'] = test_record(webmaster)
     if test_result['create webmaster']:
-        test_result['terminateThread'] = test_terminateThread(webmaster)
+        test_result['terminateThread'] = test_terminate_thread(webmaster)
         test_result['destroy webmaster'] = test_destroy_webmaster(webmaster)
     testsuit.printlog('doublesep')
     testsuit.printlog('report', 'WebMaster')
