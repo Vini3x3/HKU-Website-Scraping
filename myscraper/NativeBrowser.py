@@ -29,25 +29,22 @@ NUMPAD0 - NUMPAD9,
 PAGE_DOWN, PAGE_UP, PAUSE, RETURN, RIGHT, SEMICOLON, SEPARATOR, SHIFT
 SPACE, SUBTRACT, TAB, UP 
 """
+
+
 class Browser:
     """
     -------------------------------------
     | Object Basics                     |
     -------------------------------------
     """
-    def __init__(self, webscrape_settings = None):
+    def __init__(self, headless=True, options=[], path=''):
         self.tabDict = {}
+
     def __str__(self):
         return 'Selenre' + self.__class__.__name__
+
     def __del__(self):
         self.tabDict = {}
-    def initSettings(default_webdriver_path, webscrape_settings = None):
-        result = {'options':[], 'path':default_webdriver_path, 'headless':True}
-        if webscrape_settings:
-            for key,val in result.items():
-                if key in webscrape_settings.keys():
-                    result[key] = webscrape_settings[key]
-        return result
     """
     -------------------------------------
     | Core Development                  |
@@ -55,9 +52,11 @@ class Browser:
     """
     def test(self):
         print('hello browser')
-    def pressKey(self, key):
+
+    def press_key(self, key):
         return getattr(KEY, key)
-    def wait(self, time = 0, ec = None, by = None, elem = None):
+
+    def wait(self, time=0, ec=None, by=None, elem=None):
         if time == 0:
             return
         elif not ec and not by and not elem:
@@ -65,12 +64,13 @@ class Browser:
             return
         elif ec and by and elem and time:
             wait = WebDriverWait(self, time)
-            BYattr = getattr(BY, by)
-            ECfunc = getattr(EC, ec)
-            result = wait.until(ECfunc((BYattr, elem)))
+            by_attr = getattr(BY, by)
+            ec_func = getattr(EC, ec)
+            result = wait.until(ec_func((by_attr, elem)))
             return result
         else:
             raise weberror.CallError(3)
+
     def tab(self, target, arg=None):
         if target is None:
             raise weberror.CallError(3)
@@ -88,6 +88,7 @@ class Browser:
             else:
                 index = self.tabDict[target]
                 self.switch_to.window(self.window_handles[index])
+
     def untab(self, target):
         if not target:
             raise weberror.CallError(3)
@@ -103,57 +104,52 @@ class Browser:
                     if self.tabDict[key] > index:
                         self.tabDict[key] -= 1
 
+
 class NewFirefox(Browser, Firefox):
-    def __init__(self, webscrape_settings = None):
-        browser_args = Browser.initSettings('myengine\geckodriver', webscrape_settings)
-        options = FirefoxOptions()
-        for _ in browser_args['options']:
-            options.add_argument(_)
-        options.headless = browser_args['headless']
-        Firefox.__init__(self, options=options, executable_path=browser_args['path'])
+    def __init__(self, headless=True, options=[], path='myengine\geckodriver'):
+        browser_options = FirefoxOptions()
+        for _ in options:
+            browser_options.add_argument(_)
+        browser_options.headless = headless
+        Firefox.__init__(self, options=browser_options, executable_path=path)
         Browser.__init__(self)
 
     def __str__(self):
         return Browser.__str__(self)
+
 
 class NewChrome(Browser, Chrome):
-    def __init__(self, webscrape_settings = None):
-        browser_args = Browser.initSettings('myengine\chromedriver', webscrape_settings)
-        options = ChromeOptions()
-        for _ in browser_args['options']:
-            options.add_argument(_)
-        options.headless = browser_args['headless']
-        options.add_experimental_option('excludeSwitches', ['enable-logging'])
-        Chrome.__init__(self, options=options, executable_path=browser_args['path'])
+    def __init__(self, headless=True, options=[], path='myengine\chromedriver'):
+        browser_options = ChromeOptions()
+        for _ in options:
+            browser_options.add_argument(_)
+        browser_options.headless = headless
+        browser_options.add_experimental_option('excludeSwitches', ['enable-logging'])
+        Chrome.__init__(self, options=browser_options, executable_path=path)
         Browser.__init__(self)
 
     def __str__(self):
         return Browser.__str__(self)
+
 
 class NewEdge(Browser, Edge):
-    def __init__(self, webscrape_settings = None):
-        browser_args = Browser.initSettings('myengine\MicrosoftWebDriver', webscrape_settings)
-        # options = EdgeOptions()
-        # for _ in browser_args['options']:
-        #     options.add_argument(_)
-        # Edge.__init__(self, options=options, executable_path=browser_args['path'])
-        Edge.__init__(self, executable_path=browser_args['path'])
+    def __init__(self, headless=True, options=[], path='myengine\MicrosoftWebDriver'):
+        # browser_options = EdgeOptions()
+        # for _ in options:
+        #     browser_options.add_argument(_)
+        # Edge.__init__(self, options=browser_options, executable_path=path)
+        Edge.__init__(self, executable_path=path)
         Browser.__init__(self)
 
     def __str__(self):
         return Browser.__str__(self)
 
-def NewBrowser(webscrape_settings):
-    browser_list = ['Chrome', 'Firefox', 'Edge']
-    if webscrape_settings == None:
-        raise weberror.CallError(1)
-    elif not isinstance(webscrape_settings, dict):
-        raise weberror.CallError(3)
-    elif 'browser' not in webscrape_settings.keys():
+
+def get_browser(browser, **kwargs):
+    browsers = ['Chrome', 'Firefox', 'Edge']
+    if browser not in browsers:
         raise weberror.CallError(4)
-    elif webscrape_settings['browser'] not in browser_list:
-        raise weberror.CallError(3)
     else:
-        klass = globals()['New' + webscrape_settings['browser']]
-        return klass(webscrape_settings)
+        klass = globals()['New' + browser]
+        return klass(**kwargs)
 
