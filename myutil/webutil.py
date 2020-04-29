@@ -2,13 +2,15 @@ from time import sleep
 from bs4 import BeautifulSoup as bs
 from myutil import weberror
 
-def util_universal_hku_login(browser, credential):
-    username = browser.find_element_by_id('username')
-    username.send_keys(credential['username'])
-    password = browser.find_element_by_id('password')
-    password.send_keys(credential['password'])
-    password.submit()
+
+def util_universal_hku_login(browser, username, password):
+    input_username = browser.find_element_by_id('username')
+    input_username.send_keys(username)
+    input_password = browser.find_element_by_id('password')
+    input_password.send_keys(password)
+    input_password.submit()
     # browser.wait(1)
+
 
 def util_getELEMfromProperties(selenium_object, tag_name, feature_dict):
     """
@@ -27,6 +29,7 @@ def util_getELEMfromProperties(selenium_object, tag_name, feature_dict):
                     match = False
         if match:
             return target
+
 
 def util_HTMLtable2List(soup):
     def rowelem(elem):
@@ -58,6 +61,7 @@ def util_HTMLtable2List(soup):
         # trs = soup.find_all('tr')        
         # result += [tr.find_all(['td','th']) for tr in trs]
     return result
+
 
 def util_soup2List(soup):
     def rowelem(elem):
