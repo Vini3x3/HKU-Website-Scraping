@@ -4,14 +4,9 @@ from time import time, sleep
 
 from myutil.testsuit import testsuit3 as testsuit
 
-# credential = {
-#     'username': 'u3537502',
-#     'password': 'YourMother62329197',
-# }
-
 credential = {
-    'username': 'approach',
-    'password': '123456789yht',
+    'username': '',
+    'password': '',
 }
 
 # webmaster = WebMaster(credential, {'initialize-website': 'On Demand', 'verbose': 0, 'headless': True})
