@@ -50,6 +50,64 @@ def cached(key):
     return decorator
 
 
+def keywordFiltering(course_contents, twoDkeywords):
+    result = []
+    for course_content in course_contents:
+        search_string = course_content['name'] + ' ' + course_content['region']
+        search_string = search_string.lower()
+        chosen = True
+        for keyword_row in twoDkeywords:
+            match_a_keyword = False
+            for keyword in keyword_row:
+                if keyword.lower() in search_string:
+                    match_a_keyword = True
+            if not match_a_keyword:
+                chosen = False
+        if chosen:
+            result.append(course_content)
+    return result
+
+
+def listSearch(search_list, quota=0, exact=False):
+    if quota != 0:
+        if exact:
+            # adjust the quota
+            if 0 < quota <= len(search_list):
+                adjusted_quota = quota - 1
+            elif len(search_list) < quota:
+                adjusted_quota = len(search_list)
+            elif -1 * len(search_list) < quota < 0:
+                adjusted_quota = quota
+            elif quota < -1 * len(search_list):
+                adjusted_quota = -1 * len(search_list)
+            else: # input = 0
+                return
+            # output
+            return search_list[adjusted_quota]
+        else:
+            # adjust the quota
+            if 0 < quota <= len(search_list):
+                adjusted_quota = quota
+            elif len(search_list) < quota:
+                adjusted_quota = len(search_list)
+            elif -1 * len(search_list) < quota < 0:
+                adjusted_quota = quota
+            elif quota < -1 * len(search_list):
+                adjusted_quota = -1 * len(search_list)
+            else: # input = 0
+                return []
+            # output
+            if 0 < adjusted_quota <= len(search_list):
+                return search_list[0:adjusted_quota]
+            else:
+                result = []
+                for i in range(len(search_list) - 1, len(search_list) + adjusted_quota - 1, -1):
+                    # print(i)
+                    result.append(search_list[i])
+                return result
+    else:
+        return search_list
+
 
 class Website:
     """
@@ -159,17 +217,17 @@ class Moodle(Website):
 
             'File': 'mod/resource/',
             'Assignment': 'mod/assign/',
-            'submit_turnitin': 'mod/turnitintooltwo/',
+            'Turnitin Assignment 2': 'mod/turnitintooltwo/',
             'URL': 'mod/url/',
             'Page': 'mod/page/',
             'Forum': 'mod/forum/',
             'Quiz': 'mod/quiz/',
-            'folder': 'mod/folder/',
+            'Folder': 'mod/folder/',
             'Questionnaire': 'mod/questionnaire/',
-            'choice': 'mod/choice/',
+            'Choice': 'mod/choice/',
             'Group choice': 'mod/choicegroup/',
             'External tool': 'mod/lti/',
-            'feedback': 'mod/feedback/',
+            'Feedback': 'mod/feedback/',
             'vpl': 'mod/vpl/',
 
         }
@@ -252,59 +310,11 @@ class Moodle(Website):
         for row in self.sitemap:
             if keywords.lower() in row[0].lower():
                 return row
-        raise weberror.CallError(3)
+        return ('', '')
+        # raise weberror.CallError(3)
 
     def findAllCoursesByKeywords(self, browser, keywords):
         return [row for row in self.sitemap if keywords.lower() in row[0].lower()]
-
-    @switchTab
-    def scrapeCourseContents(self, browser, url):
-        self.printdebug('start')
-        result = []
-        # breakpoint
-        if self.probe(browser, url):
-            self.printdebug('cached')
-            return self.mycache[self.hashfunc(inspect.stack()[0][3], url)]
-        # breakpoint
-        self.printdebug('not cached')
-        browser.get(url)
-        self.printdebug(browser.current_url)
-        soup = bs(browser.page_source, features='lxml')
-        region = soup.find('section', id='region-main')
-        items = region.find_all('div', class_='activityinstance')
-        self.printdebug(len(items))
-        for item in items:
-            instance = str(item.find('span', class_='instancename'))
-            # example: <span class="instancename">News announcements<span class="accesshide"> Forum</span></span>
-
-            if '<span class="accesshide">' in instance:
-
-                start = instance.find('<span class="instancename">') + len('<span class="instancename">')
-                middle1 = instance.find('<span class="accesshide">')
-                middle2 = instance.find('<span class="accesshide">') + len('<span class="accesshide">')
-                end = instance.find('</span></span>')
-
-                name = instance[start:middle1].strip()
-                type = instance[middle2:end].strip()
-            else:
-                name = item.find('span', class_='instancename').get_text(strip=True)
-                type = ''
-
-            if item.find('div', class_='dimmed dimmed_text'):
-                link = ''
-            else:
-                link = item.find('a')['href']
-
-            result.append({
-                'link': link,
-                'name': name,
-                'type': type,
-            })
-        # breakpoint
-        self.mycache[self.hashfunc(inspect.stack()[0][3], url)] = result
-        # breakpoint
-        self.printdebug('end')
-        return result
 
     @switchTab
     def scrapeCourseContentPreview(self, browser, url):
@@ -353,98 +363,165 @@ class Moodle(Website):
     | Further Extension                 |
     -------------------------------------
     """
-    def findCourseContent(self, browser, course_keywords, search_keyword='', type=[], quota=-1, reverse=False, exact=False):
-        # stage 1: find course link
-        try:
-            course_tuple = self.findCourseByKeywords(browser, course_keywords)
-        except weberror.CallError:
-            print('no such course')
-            return
-
-        # stage 2: find course content
-        course_url = course_tuple[1]
-        try:
-            course_contents = self.scrapeCourseContents(browser, course_url)
-        except:
-            print('failed')
-            return
-
-        # stage 3: filtering
-        if search_keyword != '':
-            search_keyword = search_keyword.lower()
-            course_contents = [row for row in course_contents if search_keyword in row['name'].lower()]
-
-        if len(type) > 0:
-            course_contents = [row for row in course_contents if row['type'] in type]
-        temp = []
-
-        if quota > 0:
-            for _type in type:
-                count = quota
-                if not reverse:
-                    for course_content in course_contents:
-                        if course_content['type'] == _type and count > 0:
-                            if not exact:
-                                temp.append(course_content)
-                            else:
-                                if count == quota:
-                                    temp.append(course_content)
-                            count -= 1
-                else:
-                    for i in range(len(course_contents)-1, 0, -1):
-                        if course_contents[i]['type'] == _type and count > 0:
-                            if not exact:
-                                temp.append(course_contents[i])
-                            else:
-                                if count == 1:
-                                    temp.append(course_contents[i])
-                            count -= 1
-            course_contents = temp.copy()
-        return course_contents
-
-    def findContentByKeywords(self, browser, course_keywords, content_keywords):
-        # stage 1: find course link
-        try:
-            course_tuple = self.findCourseByKeywords(browser, course_keywords)
-        except weberror.CallError:
-            print('no such course')
-            return
-        # stage 2: scrape course content
-        print(course_tuple[1])
-        try:
-            result = self.scrapeCourseContents(browser, course_tuple[1])
-        except:
-            print('cannot scrape course content')
-            return
-
-        # stage 3: filter course content by keywords
-        temp = []
-        content_keywords = content_keywords.lower()
-        for _ in result:
-            if content_keywords in _['name'].lower():
-                temp.append(_)
-        print(temp)
-        return temp
-
-
-
-
     def findPageView(self, browser, course_keywords):
         # stage 1: find course link
         try:
-            course_tuple = self.findCourseByKeywords(browser, course_keywords)
+            course_name, course_url = self.findCourseByKeywords(browser, course_keywords)
         except weberror.CallError:
-            print('no such course')
-            return
+            self.printdebug('no such course')
+            return ''
 
         # stage 2: find course content
-        course_url = course_tuple[0]
         try:
             filename = self.scrapeCourseContentPreview(browser, course_url)
         except:
-            print('failed')
-            return
+            self.printdebug('failed to scrape')
+            return ''
         return filename
+
+    @switchTab
+    def scrapeCourseContents(self, browser, url):
+        self.printdebug('start')
+        # breakpoint
+        if self.probe(browser, url):
+            self.printdebug('cached')
+            return self.mycache[self.hashfunc(inspect.stack()[0][3], url)]
+        # breakpoint
+        self.printdebug('not cached')
+        browser.get(url)
+        html = browser.find_element_by_id('region-main').get_attribute('innerHTML')
+        soup = bs(html, features="lxml")
+        ul = soup.find('ul', class_='topics')
+        regions = ul.find_all('li', class_='section main clearfix')
+        result = []
+        for region in regions:
+            region_name = region.find('h3', class_='sectionname').text
+            self.printdebug(region_name)
+            items = region.find_all('div', class_='activityinstance')
+            self.printdebug(len(items))
+            for item in items:
+                instance = str(item.find('span', class_='instancename'))
+                # example: <span class="instancename">News announcements<span class="accesshide"> Forum</span></span>
+
+                if '<span class="accesshide">' in instance:
+
+                    start = instance.find('<span class="instancename">') + len('<span class="instancename">')
+                    middle1 = instance.find('<span class="accesshide">')
+                    middle2 = instance.find('<span class="accesshide">') + len('<span class="accesshide">')
+                    end = instance.find('</span></span>')
+
+                    name = instance[start:middle1].strip()
+                    type = instance[middle2:end].strip()
+                else:
+                    name = item.find('span', class_='instancename').get_text(strip=True)
+                    type = ''
+
+                if item.find('div', class_='dimmed dimmed_text'):
+                    link = ''
+                else:
+                    link = item.find('a')['href']
+
+                result.append({
+                    'link': link,
+                    'name': name,
+                    'type': type,
+                    'region': region_name,
+                })
+        for each in result:
+            if each['type'] == '' and each['link'] != '':
+                for key, val in self.content_type.items():
+                    if val in each['link']:
+                        each['type'] = key
+        # breakpoint
+        self.mycache[self.hashfunc(inspect.stack()[0][3], url)] = result
+        # breakpoint
+        self.printdebug('end')
+        return result
+
+    @switchTab
+    def scrapeFolder(self, browser, url):
+        self.printdebug('start')
+        # breakpoint
+        if self.probe(browser, url):
+            self.printdebug('cached')
+            return self.mycache[self.hashfunc(inspect.stack()[0][3], url)]
+        # breakpoint
+        self.printdebug('not cached')
+        browser.get(url)
+        soup = bs(browser.find_element_by_id('region-main').get_attribute('innerHTML'), features='lxml')
+        files = soup.find_all('span', class_='fp-filename-icon')
+        folder_name = soup.find('h2').text
+        result = []
+        for file in files:
+            a = file.find('a')
+            if a:
+                result.append({
+                    'link': a['href'],
+                    'name': a.text,
+                    'type': 'File',
+                    'region': folder_name,
+                })
+        # breakpoint
+        self.mycache[self.hashfunc(inspect.stack()[0][3], url)] = result
+        # breakpoint
+        self.printdebug('end')
+        return result
+
+
+
+    # def findCourseContents(self, browser, course_keywords, options={}):
+    def superSearch(self, browser, course_keywords, options={}):
+        # stage 1: find course link
+        course_name, course_url = self.findCourseByKeywords(browser, course_keywords)
+        if course_url == '':
+            return []
+
+        # stage 2: scrape the course content
+        course_contents = self.scrapeCourseContents(browser, course_url)
+
+        # print(len(course_contents))
+        self.printdebug(len(course_contents))
+
+        # stage 2.5: further scrape content if any of them is a folder
+        folder_urls = [_['link'] for _ in course_contents if _['type'] == 'Folder']
+
+        for url in folder_urls:
+            course_contents.extend(self.scrapeFolder(browser, url))
+
+        course_contents = [_ for _ in course_contents if _['type'] != 'Folder']
+
+        # print(len(course_contents))
+        self.printdebug(len(course_contents))
+
+        # return course_contents
+
+        # stage 3: type restriction
+        if 'type' in options:
+            if len(options['type']) > 0:
+                course_contents = [course_content for course_content in course_contents if course_content['type'] in options['type']]
+        # print(len(course_contents))
+        self.printdebug(len(course_contents))
+        # return course_contents
+
+        # stage 4: keyword filtering
+        if 'file_keywords' in options:
+            course_contents = keywordFiltering(course_contents, options['file_keywords'])
+
+        # print(len(course_contents))
+        self.printdebug(len(course_contents))
+        # return result
+
+        # stage 5: do logics
+        if 'quota' in options:
+            if 'exact' in options:
+                result = listSearch(course_contents, options['quota'], options['exact'])
+            else:
+                result = listSearch(course_contents, options['quota'])
+
+        # print(len(result))
+        self.printdebug(len(course_contents))
+
+        return result
 
 
 class Portal(Website):

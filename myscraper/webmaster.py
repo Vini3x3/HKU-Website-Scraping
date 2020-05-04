@@ -171,12 +171,17 @@ class WebMaster:
         if hasattr(self.websites[website_name], func_name):
             func = getattr(self.websites[website_name], func_name)
             self.printdebug('call function')
-            result = func(self.browser, *args)
+            try:
+                result = func(self.browser, *args)
+            except:
+                self.printdebug('function error')
+                result = []
             self.printdebug('end')
             return result
         else:
             self.printdebug('no such function')
-            raise weberror.CallError(0)
+            # raise weberror.CallError(0)
+            return []
 
     @needBrowser
     def test(self):
