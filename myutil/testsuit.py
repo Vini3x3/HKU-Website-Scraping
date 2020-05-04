@@ -110,6 +110,7 @@ class testsuit2:
 """testsuit3"""
 """Use decorator to test"""
 
+
 def compileTest(func, *args):
     def wrapper(*args):
         try:
@@ -118,6 +119,8 @@ def compileTest(func, *args):
             return False        
         return True        
     return wrapper
+
+
 def timedTest(repeat=1):
     def real_decorator(function):
         def wrapper(*args):
@@ -131,6 +134,8 @@ def timedTest(repeat=1):
             return end_time - start_time
         return wrapper
     return real_decorator
+
+
 def errorTest(func, *args):
     def wrapper(*args):
         try:
@@ -138,6 +143,8 @@ def errorTest(func, *args):
         except:   
             print_exc()
     return wrapper
+
+
 def log(formattype, tab=None, msg=None):
     def real_decorator(function):
         def wrapper(*args):
@@ -157,6 +164,7 @@ def log(formattype, tab=None, msg=None):
         return wrapper
     return real_decorator
 
+
 def test(testground, errorhandler, endtest, *args):
     def wrapper(errorhandler, endtest, *args):
         try:
@@ -166,6 +174,8 @@ def test(testground, errorhandler, endtest, *args):
         finally:
             endtest(*args)
     return wrapper
+
+
 def printlog(formattype, tab=None, msg=None):
     formatstyle = {
         'field'     : '======Test for {:19}======',
@@ -179,8 +189,11 @@ def printlog(formattype, tab=None, msg=None):
     }
     if formattype in formatstyle.keys():
         print(formatstyle[formattype].format(tab, msg))
+
+
 def defaultpass(*args):
     pass
+
 
 class dotdict(dict):
     """dot.notation access to dictionary attributes"""
@@ -203,6 +216,7 @@ class dotdict(dict):
             self.errorhandler(argument)
         finally:
             self.endtest(argument)
+
 
 testsuit3 = dotdict({
     # decorators
