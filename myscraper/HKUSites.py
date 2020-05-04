@@ -29,20 +29,26 @@ def switchTab(func, *args):
     def wrapper(self, browser, *args):
         browser.tab(self.sitename)
         return func(self, browser, *args)
-
     return wrapper
 
 
-def probeWebpage(key):
-    def decorator(func):
+# Decorator for caching
+def cached(key):
+    def decorator(function):
+        @switchTab
         def wrapper(self, browser, *args):
             url = self.sitelinks[key]
             browser.get(url)
-            if url not in self.htmlcache.keys() or self.htmlcache[url] != len(browser.page_source):
-                self.mycache[self.hashfunc(url)] = func(browser, *args)
-            return self.mycache[self.hashfunc(url)]
-
+            if url in self.htmlcache.keys():
+                if self.htmlcache[url] == len(browser.page_source):
+                    return self.mycache[self.hashfunc(function.__name__, url, *args)]
+            self.htmlcache[url] = len(browser.page_source)
+            result = function(self, browser, *args)
+            self.mycache[self.hashfunc(function.__name__, url, *args)] = result
+            return result
+        return wrapper
     return decorator
+
 
 
 class Website:
@@ -123,6 +129,7 @@ class Website:
 
 
 class Moodle(Website):
+
     """
     -------------------------------------
     | Object Basics                     |
@@ -137,8 +144,35 @@ class Moodle(Website):
             'login_sublink_1': 'https://moodle.hku.hk/login/index.php?authCAS=CAS',
             'login_sublink_2': 'https://moodle.hku.hk/login/index.php',
             'logout': 'https://moodle.hku.hk/login/logout.php?sesskey=',
+            'deadlines': 'https://moodle.hku.hk/my/?myoverviewtab=timeline',
         }
         self.sitename = 'Moodle'
+        self.content_type = {
+
+            'help': 'help.php?',
+            'force_download': 'pluginfile.php/',
+
+            'grade': 'grade/report/index.php?id=',
+            'course': 'course/view.php?id=',
+            'contact': 'user/index.php?id=',
+            'user': 'user/view.php?id=',
+
+            'File': 'mod/resource/',
+            'Assignment': 'mod/assign/',
+            'submit_turnitin': 'mod/turnitintooltwo/',
+            'URL': 'mod/url/',
+            'Page': 'mod/page/',
+            'Forum': 'mod/forum/',
+            'Quiz': 'mod/quiz/',
+            'folder': 'mod/folder/',
+            'Questionnaire': 'mod/questionnaire/',
+            'choice': 'mod/choice/',
+            'Group choice': 'mod/choicegroup/',
+            'External tool': 'mod/lti/',
+            'feedback': 'mod/feedback/',
+            'vpl': 'mod/vpl/',
+
+        }
 
     def __str__(self):
         return 'This is a Moodle Instance'
@@ -286,14 +320,9 @@ class Moodle(Website):
         browser.set_window_size(original_size['width'], original_size['height'])
         return filename
 
-    @switchTab
+    @cached('deadlines')
     def scrapeDeadlines(self, browser):
-        url = 'https://moodle.hku.hk/my/?myoverviewtab=timeline'
-        # breakpoint
-        if self.probe(browser, url):
-            print('cached')
-            return self.mycache[self.hashfunc(inspect.stack()[0][3], url)]
-        # breakpoint
+        url = self.sitelinks['deadlines']
         browser.get(url)
         browser.wait(1)
         soup = bs(browser.page_source, features='lxml')
@@ -318,6 +347,104 @@ class Moodle(Website):
                 'time': deadline.find('div', class_='span5 text-truncate').get_text(strip=True),
             })
         return result
+
+    """
+    -------------------------------------
+    | Further Extension                 |
+    -------------------------------------
+    """
+    def findCourseContent(self, browser, course_keywords, search_keyword='', type=[], quota=-1, reverse=False, exact=False):
+        # stage 1: find course link
+        try:
+            course_tuple = self.findCourseByKeywords(browser, course_keywords)
+        except weberror.CallError:
+            print('no such course')
+            return
+
+        # stage 2: find course content
+        course_url = course_tuple[1]
+        try:
+            course_contents = self.scrapeCourseContents(browser, course_url)
+        except:
+            print('failed')
+            return
+
+        # stage 3: filtering
+        if search_keyword != '':
+            search_keyword = search_keyword.lower()
+            course_contents = [row for row in course_contents if search_keyword in row['name'].lower()]
+
+        if len(type) > 0:
+            course_contents = [row for row in course_contents if row['type'] in type]
+        temp = []
+
+        if quota > 0:
+            for _type in type:
+                count = quota
+                if not reverse:
+                    for course_content in course_contents:
+                        if course_content['type'] == _type and count > 0:
+                            if not exact:
+                                temp.append(course_content)
+                            else:
+                                if count == quota:
+                                    temp.append(course_content)
+                            count -= 1
+                else:
+                    for i in range(len(course_contents)-1, 0, -1):
+                        if course_contents[i]['type'] == _type and count > 0:
+                            if not exact:
+                                temp.append(course_contents[i])
+                            else:
+                                if count == 1:
+                                    temp.append(course_contents[i])
+                            count -= 1
+            course_contents = temp.copy()
+        return course_contents
+
+    def findContentByKeywords(self, browser, course_keywords, content_keywords):
+        # stage 1: find course link
+        try:
+            course_tuple = self.findCourseByKeywords(browser, course_keywords)
+        except weberror.CallError:
+            print('no such course')
+            return
+        # stage 2: scrape course content
+        print(course_tuple[1])
+        try:
+            result = self.scrapeCourseContents(browser, course_tuple[1])
+        except:
+            print('cannot scrape course content')
+            return
+
+        # stage 3: filter course content by keywords
+        temp = []
+        content_keywords = content_keywords.lower()
+        for _ in result:
+            if content_keywords in _['name'].lower():
+                temp.append(_)
+        print(temp)
+        return temp
+
+
+
+
+    def findPageView(self, browser, course_keywords):
+        # stage 1: find course link
+        try:
+            course_tuple = self.findCourseByKeywords(browser, course_keywords)
+        except weberror.CallError:
+            print('no such course')
+            return
+
+        # stage 2: find course content
+        course_url = course_tuple[0]
+        try:
+            filename = self.scrapeCourseContentPreview(browser, course_url)
+        except:
+            print('failed')
+            return
+        return filename
 
 
 class Portal(Website):
@@ -391,7 +518,7 @@ class Portal(Website):
     -------------------------------------
     """
 
-    @switchTab
+    @cached('weekSch')
     def findWeeklySchedule(self, browser, targetdate, starttime, endtime):
 
         """
@@ -400,10 +527,6 @@ class Portal(Website):
         """
         # stage 1: get the page of weekly schedule
         weekly_schedule_url = self.sitelinks['weekSch']
-        # breakpoint
-        if self.probe(browser, weekly_schedule_url):
-            return self.mycache[self.hashfunc(inspect.stack()[0][3], targetdate, starttime, endtime)]
-        # breakpoint
         browser.get(weekly_schedule_url)
 
         self.printdebug('stage 1 ends')
@@ -424,8 +547,8 @@ class Portal(Website):
         self.printdebug('stage 2 ends')
 
         # stage 3: scrape data
-        browser.wait(5, 'invisibility_of_element_located', 'ID', 'WAIT_win0')
-        browser.wait(1)
+        # browser.wait(5, 'invisibility_of_element_located', 'ID', 'WAIT_win0')
+        browser.wait(5)
         soup = bs(browser.page_source, features='lxml')
         timetable = soup.find('table', id='WEEKLY_SCHED_HTMLAREA')
 
@@ -443,19 +566,12 @@ class Portal(Website):
         self.printdebug('stage 4 ends')
 
         result = timetable.prettify()
-        # breakpoint
-        self.mycache[self.hashfunc(inspect.stack()[0][3], targetdate, starttime, endtime)] = result
-        # breakpoint
         return result
 
-    @switchTab
+    @cached('transcript')
     def findTranscript(self, browser):
         result = {}
         transcriptlink = self.sitelinks['transcript']
-        # breakpoints
-        if self.probe(browser, transcriptlink):
-            return self.mycache[self.hashfunc(inspect.stack()[0][3])]
-        # breakpoints
         browser.get(transcriptlink)
 
         frame = bs(browser.page_source, features='lxml')
@@ -463,28 +579,23 @@ class Portal(Website):
         tables = soup2.find_all('table', {'class': 'PSLEVEL1GRIDWBO'})
         for table in tables:
             result[table['id'].split('$')[0]] = webutil.util_soup2List(table)
-        # breakpoint
-        self.mycache[self.hashfunc(inspect.stack()[0][3])] = result
-        # breakpoint
         return result
 
+    @cached('invoice')
     def findInvoice(self, browser):
         return self.scrapeTable(browser, self.sitelinks['invoice'])
 
+    @cached('receipt')
     def findReceipt(self, browser):
         return self.scrapeTable(browser, self.sitelinks['receipt'])
 
+    @cached('activity')
     def findAccountActivity(self, browser):
         return self.scrapeTable(browser, self.sitelinks['activity'])
 
-    @switchTab
     def scrapeTable(self, browser, url):
         result = {}
         self.printdebug(url)
-        # breakpoints
-        if self.probe(browser, url):
-            return self.mycache[self.hashfunc(inspect.stack()[0][3])]
-        # breakpoints
         browser.get(url)
         frame = bs(browser.page_source, features='lxml')
         soup = frame.find(id='ACE_width')
@@ -494,11 +605,9 @@ class Portal(Website):
             if table.find('table', {'class': 'PSLEVEL1GRID'}):
                 result[table['id'].split('$')[0]] = webutil.util_soup2List(
                     table.find('table', {'class': 'PSLEVEL1GRID'}))
-        # breakpoint
-        self.mycache[self.hashfunc(inspect.stack()[0][3])] = result
-        # breakpoint
         return result
 
+    @cached('weekSch')
     def findWeeklySch(self, browser, targetdate, starttime, endtime):
 
         """
@@ -507,10 +616,6 @@ class Portal(Website):
         """
         # stage 1: get the page of weekly schedule
         weekly_schedule_url = self.sitelinks['weekSch']
-        # breakpoint
-        if self.probe(browser, weekly_schedule_url):
-            return self.mycache[self.hashfunc(inspect.stack()[0][3], targetdate, starttime, endtime)]
-        # breakpoint
         browser.get(weekly_schedule_url)
 
         self.printdebug('stage 1 ends')
@@ -531,8 +636,8 @@ class Portal(Website):
         self.printdebug('stage 2 ends')
 
         # stage 3: scrape data
-        browser.wait(5, 'invisibility_of_element_located', 'ID', 'WAIT_win0')
-        browser.wait(1)
+        # browser.wait(5, 'invisibility_of_element_located', 'ID', 'WAIT_win0')
+        browser.wait(5)
         soup = bs(browser.page_source, features='lxml')
         timetable = soup.find('table', id='WEEKLY_SCHED_HTMLAREA')
 
@@ -559,8 +664,57 @@ class Portal(Website):
                             'location': data_pack_1[3]
                         })
 
-        # breakpoint
-        self.mycache[self.hashfunc(inspect.stack()[0][3], targetdate, starttime, endtime)] = result
-        # breakpoint
+        self.printdebug('stage 4 ends')
+
         return result
+
+    def findTable(self, browser, option=[]):
+        table_id = {
+            'TOTAL_DUE': 'Invoice',
+            'CHRGS_DUE': 'Invoice',
+            'SSF_SS_BIHDR_VW': 'Invoice',
+            'Z_BILLPAYH2_TBL': 'Invoice',
+            'CRSE_HIST': 'Transcript',
+            'GRID_GPA': 'Transcript',
+            'ACCT_ACTIVITY': 'Activity',
+            'POST_PAY': 'Receipt',
+        }
+        if type(option) is str:
+            # print('a string')
+            if option == 'Invoice':
+                return self.findInvoice(browser)
+            elif option == 'Transcript':
+                return self.findTranscript(browser)
+            elif option == 'Activity':
+                return self.findAccountActivity(browser)
+            elif option == 'Receipt':
+                return self.findReceipt(browser)
+            else:
+                return
+        elif type(option) is list:
+            # print('a list')
+            result = {}
+            types = set([table_id[each] for each in option if each in table_id])
+            for each in types:
+                if each == 'Invoice':
+                    temp = self.findInvoice(browser)
+                    for key in temp:
+                        if key in option:
+                            result[key] = temp[key]
+                elif each == 'Transcript':
+                    temp = self.findTranscript(browser)
+                    for key in temp.keys():
+                        if key in option:
+                            result[key] = temp[key]
+                elif each == 'Activity':
+                    temp = self.findAccountActivity(browser)
+                    for key in temp:
+                        if key in option:
+                            result[key] = temp[key]
+                elif option == 'Receipt':
+                    temp = self.findReceipt(browser)
+                    for key in temp:
+                        if key in option:
+                            result[key] = temp[key]
+            return result
 
