@@ -1,15 +1,15 @@
-# New Development
+# Further Development
 
-The version is created for two purpose: 
+This version is created for 2 purposes:  
 
-1. adding new functions in `HKUSites.py`: 
+- Return empty output instead of raising exceptions
 
-- Add `findContentByKeywords` function, which is `findCourseByKeywords` + `scrapeCourseContent`
-- Add `findPageView` function, which is `findCourseByKeywords` + `scrapeCourseContentPreview`
-- Add `findTable` function, which is work above `findInvoice`, `findReceipt`  and `findAccountActivtiy`
+- Add and update functions
 
-2. add notification module
+  - Add `scrapeFolder` function
+  - Update `scrapeCourseContent`
+  - Add `keywordSearch`
+  - Add `listSearch`
+  - Add `findCourseContents` function, which includes `scrapeFolder`, `listSearch`, `keywordSearch` and `scrapeCouseContent`
 
-- Auto notify when invoice is not paid
-- Auto notify when lecture is near
-- Auto notify when deadline is near
+  
