@@ -1,21 +1,16 @@
 from notification import HKUNotifier
 from time import time, sleep
 import inspect
-import threading
 from datetime import datetime
 
 
-class NoteMaster(threading.Timer):
+class NoteMaster:
     """
     -------------------------------------
-    | Thread Basics                     |
+    | Object Basics                     |
     -------------------------------------
     """
-    def __init__(self, interval=600, function=None, verbose=0):
-        # inherent
-        super().__init__(interval, function)
-        self.function = self.core_function
-
+    def __init__(self, webmaster, verbose=0):
         # settings
         self.notifiers = []
         self.notices = []
@@ -24,15 +19,9 @@ class NoteMaster(threading.Timer):
         # copy arguments
         self.verbose = verbose
 
-    def start(self, webmaster):
+        # initialize
         self.add_default_notifiers(webmaster)
         self.start_time = time()
-        super().start()
-
-    def run(self):
-        while not self.finished.is_set():
-            self.function()
-            self.finished.wait(self.interval)
 
     """
     -------------------------------------
@@ -55,10 +44,13 @@ class NoteMaster(threading.Timer):
             return result
         return wrapper
 
+    # additional function for non-threading
     @debug
-    def core_function(self):
+    def check(self, webmaster):
         if self.has_notice():
-            self.handle_notice()
+            return self.handle_notice()
+        else:
+            return []
 
     @debug
     def add_notifier(self, notifier_strategy, webmaster, delay=0, range=600):
@@ -80,16 +72,16 @@ class NoteMaster(threading.Timer):
         alarms = []
         for notice in self.notices:
             if notice['type'] == 'relative':
-                print(notice['delay'], time() - self.start_time, notice['delay'] - notice['range'])
                 if notice['delay'] > time() - self.start_time > notice['delay'] - notice['range'] or notice['delay'] < time() - self.start_time:
                     alarms.append(notice)
             elif notice['type'] == 'absolute':
-                print(notice['time'], time(), notice['time'] - notice['range'])
                 if notice['time'] > time() > notice['time'] - notice['range']:
                     alarms.append(notice)
         for alarm in alarms:
-            print(alarm['msg'])
+            # print(alarm['msg'])
             self.notices.remove(alarm)
+        return alarms
+
 
     """
     -------------------------------------

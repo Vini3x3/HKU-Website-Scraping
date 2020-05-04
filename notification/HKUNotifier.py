@@ -15,7 +15,7 @@ def moodle_deadline_strategy(webmaster, delay, range):
             'type': 'relative',
             'range': range,
             'delay': delay,
-            'msg': '<a href="{}">{}: {}</a>'.format(near_deadline['link'], near_deadline['name'], near_deadline['time'])
+            'msg': '<a href="{}" target="_blank">{}: {}</a>'.format(near_deadline['link'], near_deadline['name'], near_deadline['time'])
         }]
     else:
         return []
