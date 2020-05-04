@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup as bs
 import cachetools
 from myutil import webutil, weberror
+from traceback import print_exc
 
 from datetime import datetime
 import inspect
@@ -9,19 +10,21 @@ from random import random
 
 """
 -------------------------------------
-| Global Functions                  |
+| Global Functions and Variables    |
 -------------------------------------
 """
+WEBSITES = ['Portal', 'Moodle']
 
 
 # Switch function to render requested object
-def get_website(website, username, password, **kwargs):
-    websites = ['Portal', 'Moodle']
-    if website not in websites:
+def get_website(website, username, password, *args, **kwargs):
+    global WEBSITES
+    if website not in WEBSITES:
         raise weberror.CallError(4)
     else:
         klass = globals()[website]
-        return klass(username, password, **kwargs)
+        # print(kwargs)
+        return klass(username, password, *args, **kwargs)
 
 
 # Decorator for switching tab
@@ -30,24 +33,6 @@ def switch_tab(func, *args):
         browser.tab(self.site_name)
         return func(self, browser, *args)
     return wrapper
-
-
-# Decorator for caching
-def cached(key):
-    def decorator(function):
-        @switch_tab
-        def wrapper(self, browser, *args):
-            url = self.site_links[key]
-            browser.get(url)
-            if url in self.html_cache.keys():
-                if self.html_cache[url] == len(browser.page_source):
-                    return self.func_cache[self.hash_func(function.__name__, url, *args)]
-            self.html_cache[url] = len(browser.page_source)
-            result = function(self, browser, *args)
-            self.func_cache[self.hash_func(function.__name__, url, *args)] = result
-            return result
-        return wrapper
-    return decorator
 
 
 class Website:
@@ -62,14 +47,12 @@ class Website:
         self.sitemap = []
         self.site_links = {}
         self.site_name = ''
-        self.func_cache = cachetools.LRUCache(cachesize)
         self.html_cache = {}
-        self.hash_func = cachetools.keys.hashkey
+        self.debug = verbose > 0
 
         # copy argument
         self.username = username
         self.password = password
-        self.debug = verbose > 0
 
     def __str__(self):
         return 'This is a Website instance'
@@ -119,8 +102,11 @@ class Moodle(Website):
     -------------------------------------
     """
 
-    def __init__(self, credential, webscrape_settings=None):
-        super().__init__(credential, webscrape_settings)
+    def __init__(self, username, password, cachesize=128, verbose=0):
+        # inherent
+        super().__init__(username, password, cachesize=cachesize, verbose=verbose)
+
+        # setting
         self.site_links = {
             'home': 'https://moodle.hku.hk',
             'login': 'http://moodle.hku.hk/login',
@@ -128,6 +114,31 @@ class Moodle(Website):
             'login_sublink_2': 'https://moodle.hku.hk/login/index.php',
             'logout': 'https://moodle.hku.hk/login/logout.php?sesskey=',
             'deadlines': 'https://moodle.hku.hk/my/?myoverviewtab=timeline',
+            'target': ''
+        }
+        self.content_type = {
+            'help': 'help.php?',
+            'force_download': 'pluginfile.php/',
+
+            'grade': 'grade/report/index.php?id=',
+            'course': 'course/view.php?id=',
+            'contact': 'user/index.php?id=',
+            'user': 'user/view.php?id=',
+
+            'File': 'mod/resource/',
+            'Assignment': 'mod/assign/',
+            'Turnitin Assignment 2': 'mod/turnitintooltwo/',
+            'URL': 'mod/url/',
+            'Page': 'mod/page/',
+            'Forum': 'mod/forum/',
+            'Quiz': 'mod/quiz/',
+            'Folder': 'mod/folder/',
+            'Questionnaire': 'mod/questionnaire/',
+            'choice': 'mod/choice/',
+            'Group choice': 'mod/choicegroup/',
+            'External tool': 'mod/lti/',
+            'Feedback': 'mod/feedback/',
+            'vpl': 'mod/vpl/',
         }
         self.site_name = 'Moodle'
 
@@ -205,6 +216,17 @@ class Moodle(Website):
     -------------------------------------
     """
 
+    @switch_tab
+    def _scrape_page(self, browser, url):
+        self.print_debug('start')
+        browser.get(url)
+        if url in self.html_cache.keys():
+            if len(self.html_cache[url]) == len(browser.page_source):
+                return self.html_cache[url]
+        self.html_cache[url] = browser.page_source
+        self.print_debug('end')
+        return self.html_cache[url]
+
     @cachetools.cached(
         cache=cachetools.LRUCache(maxsize=128),
         key=lambda self, browser, keywords: cachetools.keys.hashkey(keywords)
@@ -213,7 +235,8 @@ class Moodle(Website):
         for row in self.sitemap:
             if keywords.lower() in row[0].lower():
                 return row
-        raise weberror.CallError(3)
+        # raise weberror.CallError(3)
+        return '', ''
 
     @cachetools.cached(
         cache=cachetools.LRUCache(maxsize=128),
@@ -222,19 +245,17 @@ class Moodle(Website):
     def find_all_courses_by_keywords(self, browser, keywords):
         return [row for row in self.sitemap if keywords.lower() in row[0].lower()]
 
-    @switch_tab
-    def scrape_course_content(self, browser, url):
-        self.site_links['temp'] = url
-
-        @cached('temp')
-        def _scrape_course_content(self, browser):
-            self.print_debug('begin')
-            result = []
-            self.print_debug('not cached')
-            browser.get(url)
-            self.print_debug(browser.current_url)
-            soup = bs(browser.page_source, features='lxml')
-            region = soup.find('section', id='region-main')
+    @cachetools.cached(cache=cachetools.LRUCache(maxsize=128))
+    def _parse_course_contents(self, html):
+        result = []
+        # soup = bs(html, features="lxml")
+        # section = soup.find('section', id='region-main')
+        section = bs(html, features="lxml")
+        ul = section.find('ul', class_='topics')
+        regions = ul.find_all('li', class_='section main clearfix')
+        for region in regions:
+            region_name = region.find('h3', class_='sectionname').text
+            self.print_debug(region_name)
             items = region.find_all('div', class_='activityinstance')
             self.print_debug(len(items))
             for item in items:
@@ -263,42 +284,53 @@ class Moodle(Website):
                     'link': link,
                     'name': name,
                     'type': type,
+                    'region': region_name,
                 })
+        for each in result:
+            if each['type'] == '' and each['link'] != '':
+                for key, val in self.content_type.items():
+                    if val in each['link']:
+                        each['type'] = key
+        return result
+
+    def find_deadlines(self, browser):
+        url = self.site_links['deadlines']
+        self.site_links['target'] = url
+        try:
+            html = self._scrape_page(browser, url)
+            result = self._parse_deadlines(html)
+        except:
+            self.print_debug('error')
+            print_exc()
+            result = []
+        finally:
             self.print_debug('end')
             return result
 
-        result = _scrape_course_content(self, browser)
-        del self.site_links['temp']
-        return result
+    def test(self, browser, url):
+        try:
+            self.site_links['target'] = url
+            html = self._scrape_page(browser, url)
+            result = self._parse_course_contents(html)
+        except:
+            self.print_debug('error')
+            print_exc()
+            result = []
+        finally:
+            self.print_debug('end')
+            return result
 
-    @switch_tab
-    def scrape_course_preview(self, browser, url):
-        browser.get(url)
-        filename = 'screenshot' + str(time()) + str(random()) + '.png'
-        # Ref: https://stackoverflow.com/a/52572919/
-        # https://stackoverflow.com/questions/41721734/take-screenshot-of-full-page-with-selenium-python-with-chromedriver
-        original_size = browser.get_window_size()
-        required_width = browser.execute_script('return document.body.parentNode.scrollWidth')
-        required_height = browser.execute_script('return document.body.parentNode.scrollHeight')
-        browser.set_window_size(required_width, required_height)
-        browser.find_element_by_id('region-main').screenshot(filename)  # avoids scrollbar
-        browser.set_window_size(original_size['width'], original_size['height'])
-        return filename
-
-    @cached('deadlines')
-    def scrape_deadlines(self, browser):
-        url = self.site_links['deadlines']
-        browser.get(url)
-        browser.wait(1)
-        soup = bs(browser.page_source, features='lxml')
+    @cachetools.cached(cache=cachetools.LRUCache(maxsize=128))
+    def _parse_deadlines(self, html):
+        soup = bs(html, features='lxml')
         div = soup.find('div', id='myoverview_timeline_view')
         deadlines = div.findAll('li', class_='event-list-item')
         # print(len(deadlines))
         result = []
 
-        for deadline in deadlines:            
+        for deadline in deadlines:
             link = deadline.find('a', class_='event-name')
-            deadline_name = link.get_text(strip=True)            
+            deadline_name = link.get_text(strip=True)
             self.print_debug(deadline_name)
             deadline_link = link['href']
             self.print_debug(deadline_link)
@@ -311,6 +343,102 @@ class Moodle(Website):
             })
         return result
 
+    def _parse_folder(self, html):
+        soup = bs(html, features='lxml')
+        files = soup.find_all('span', class_='fp-filename-icon')
+        folder_name = soup.find('h2').text
+        result = []
+        for file in files:
+            a = file.find('a')
+            if a:
+                result.append({
+                    'link': a['href'],
+                    'name': a.text,
+                    'type': 'File',
+                    'region': folder_name,
+                })
+        return result
+
+    @switch_tab
+    def find_page_preview(self, browser, url):
+        browser.get(url)
+        filename = 'screenshot' + str(time()) + str(random()) + '.png'
+        # Ref: https://stackoverflow.com/a/52572919/
+        # https://stackoverflow.com/questions/41721734/take-screenshot-of-full-page-with-selenium-python-with-chromedriver
+        original_size = browser.get_window_size()
+        required_width = browser.execute_script('return document.body.parentNode.scrollWidth')
+        required_height = browser.execute_script('return document.body.parentNode.scrollHeight')
+        browser.set_window_size(required_width, required_height)
+        browser.find_element_by_id('region-main').screenshot(filename)  # avoids scrollbar
+        browser.set_window_size(original_size['width'], original_size['height'])
+        return filename
+
+    def _keyword_filtering(self, course_contents, twoDkeywords):
+        result = []
+        for course_content in course_contents:
+            search_string = course_content['name'] + ' ' + course_content['region']
+            search_string = search_string.lower()
+            chosen = True
+            for keyword_row in twoDkeywords:
+                match_a_keyword = False
+                for keyword in keyword_row:
+                    if keyword.lower() in search_string:
+                        match_a_keyword = True
+                if not match_a_keyword:
+                    chosen = False
+            if chosen:
+                result.append(course_content)
+        return result
+
+    def find_course_contents(self, browser, keywords, type=[], search=[['']], quota=0, exact=False):
+        self.print_debug('begin')
+        try:
+            # stage 1: find course link
+            course_name, course_url = self.find_course_by_keywords(browser, keywords)
+
+            self.print_debug('stage 1 ends')
+
+            # stage 2: scrape course contents
+            self.site_links['target'] = course_url
+            html = self._scrape_page(browser, course_url)
+            course_contents = self._parse_course_contents(html)
+
+            # stage 2.5: further scrape content if any of them is a folder
+            folder_urls = [_['link'] for _ in course_contents if _['type'] == 'Folder']
+
+            for folder_url in folder_urls:
+                self.site_links['target'] = folder_url
+                html = self._scrape_page(browser, folder_url)
+                course_contents.extend(self._parse_folder(html))
+
+            course_contents = [_ for _ in course_contents if _['type'] != 'Folder']
+
+            result = course_contents
+
+            self.print_debug('stage 2 ends')
+
+            # stage 3: type restriction
+            if len(type) > 0:
+                course_contents = [course_content for course_content in course_contents if
+                                   course_content['type'] in type]
+            self.print_debug('stage 3 ends')
+
+            # stage 4: keyword filtering
+            course_contents = self._keyword_filtering(course_contents, search)
+            self.print_debug('stage 4 ends')
+
+            # stage 5: do logics
+            result = webutil.util_list_search(course_contents, quota, exact)
+            self.print_debug('stage 5 ends')
+
+        except:
+            self.print_debug('error')
+            print_exc()
+            result = []
+        finally:
+            self.print_debug('end')
+            return result
+
 
 class Portal(Website):
     """
@@ -319,13 +447,16 @@ class Portal(Website):
     -------------------------------------
     """
 
-    def __init__(self, credential, webscrape_settings=None):
-        # storage
-        super().__init__(credential, webscrape_settings)
+    def __init__(self, username, password, cachesize=128, verbose=0):
+        # inherent
+        super().__init__(username, password, cachesize=cachesize, verbose=verbose)
+
+        # setting
         self.site_links = {
             'login': 'https://hkuportal.hku.hk/login.html',
             'home': 'https://sis-eportal.hku.hk/psp/ptlprod/EMPLOYEE/EMPL/h/?tab=DEFAULT',
             'logout': 'https://sis-eportal.hku.hk/psp/ptlprod/EMPLOYEE/EMPL/?cmd=logout',
+            'target': '',
 
             'weekSch': 'https://sis-main.hku.hk/psc/sisprod/EMPLOYEE/HRMS/c/SA_LEARNER_SERVICES.SSR_SSENRL_SCHD_W.GBL',
             'transcript': 'https://sis-main.hku.hk/psc/sisprod/EMPLOYEE/HRMS/c/Z_SS_MENU.Z_TSRPT_WEB_STDT.GBL',
@@ -382,44 +513,50 @@ class Portal(Website):
     | Extensions                        |
     -------------------------------------
     """
+    @switch_tab
+    def _scrape_page(self, browser, url):
+        self.print_debug('start')
+        browser.get(url)
+        if url in self.html_cache.keys():
+            if len(self.html_cache[url]) == len(browser.page_source):
+                return self.html_cache[url]
+        self.html_cache[url] = browser.page_source
+        self.print_debug('end')
+        return self.html_cache[url]
 
-    @cached('weekSch')
-    def display_weekly_schedule(self, browser, target_date, start_time, end_time):
+    @cachetools.cached(cache=cachetools.LRUCache(maxsize=128))
+    def _parse_transcript(self, html):
+        self.print_debug('begin')
+        print('_parse_transcript')
+        result = {}
+        frame = bs(html, features='lxml')
+        soup = frame.find(id='ACE_width')
+        tables = soup.find_all('table', {'class': 'PSLEVEL1GRIDWBO'})
+        for table in tables:
+            result[table['id'].split('$')[0]] = webutil.util_soup2list(table)
+        self.print_debug('end')
+        return result
 
-        """
-        extract the HTML weekly schedule
-        date, start_time, end_time, where date is in 'dd/mm/yyyy' string format, and time is '8:00AM' format
-        """
-        # stage 1: get the page of weekly schedule
-        weekly_schedule_url = self.site_links['weekSch']
-        browser.get(weekly_schedule_url)
+    @cachetools.cached(cache=cachetools.LRUCache(maxsize=128))
+    def _parse_table(self, html):
+        self.print_debug('begin')
+        print('_parse_table')
+        result = {}
+        frame = bs(html, features='lxml')
+        soup = frame.find(id='ACE_width')
+        tables = soup.find_all('table', {'class': 'PSLEVEL1GRIDWBO'})
+        self.print_debug(len(tables))
+        for table in tables:
+            if table.find('table', {'class': 'PSLEVEL1GRID'}):
+                result[table['id'].split('$')[0]] = webutil.util_soup2list(
+                    table.find('table', {'class': 'PSLEVEL1GRID'}))
+        self.print_debug('end')
+        return result
 
-        self.print_debug('stage 1 ends')
-
-        # stage 2: select the right week and time range
-        date = browser.find_element_by_id('DERIVED_CLASS_S_START_DT')
-        date.clear()
-        date.send_keys(target_date)
-        input_start_time = browser.find_element_by_id('DERIVED_CLASS_S_MEETING_TIME_START')
-        input_start_time.clear()
-        input_start_time.send_keys(start_time)
-        input_end_time = browser.find_element_by_id('DERIVED_CLASS_S_MEETING_TIME_END')
-        input_end_time.clear()
-        input_end_time.send_keys(end_time)
-        refresh = browser.find_element_by_id('DERIVED_CLASS_S_SSR_REFRESH_CAL$8$')
-        refresh.click()
-
-        self.print_debug('stage 2 ends')
-
-        # stage 3: scrape data
-        browser.wait(5, 'invisibility_of_element_located', 'ID', 'WAIT_win0')
-        browser.wait(1)
-        soup = bs(browser.page_source, features='lxml')
+    @cachetools.cached(cache=cachetools.LRUCache(maxsize=128))
+    def _beautify_weekly_sch(self, html):
+        soup = bs(html, features='lxml')
         timetable = soup.find('table', id='WEEKLY_SCHED_HTMLAREA')
-
-        self.print_debug('stage 3 ends')
-
-        # stage 4: post processing
         timetable['class'] = 'table'
         time_labels = timetable.find_all('span', {'class': 'SSSTEXTWEEKLYTIME'})
         for time_label in time_labels:
@@ -427,65 +564,48 @@ class Portal(Website):
         time_labels = timetable.find_all('span', {'class': 'SSSTEXTWEEKLY'})
         for time_label in time_labels:
             time_label.parent['class'] = 'table-warning'
+        return timetable.prettify()
 
-        self.print_debug('stage 4 ends')
-
-        result = timetable.prettify()
-        return result
-
-    @cached('transcript')
     def find_transcript(self, browser):
-        result = {}
-        transcript_link = self.site_links['transcript']
-        browser.get(transcript_link)
+        self.print_debug('begin')
+        url = self.site_links['transcript']
+        self.site_links['target'] = url
+        try:
+            html = self._scrape_page(browser, url)
+            result = self._parse_transcript(html)
+        except:
+            self.print_debug('error')
+            print_exc()
+            result = {}
+        finally:
+            self.print_debug('end')
+            return result
 
-        frame = bs(browser.page_source, features='lxml')
-        soup2 = frame.find(id='ACE_width')
-        tables = soup2.find_all('table', {'class': 'PSLEVEL1GRIDWBO'})
-        for table in tables:
-            result[table['id'].split('$')[0]] = webutil.util_soup2List(table)
-        return result
+    def _find_table(self, browser, key):
+        self.print_debug('begin')
+        url = self.site_links[key]
+        self.site_links['target'] = url
+        try:
+            html = self._scrape_page(browser, url)
+            result = self._parse_table(html)
+        except:
+            self.print_debug('error')
+            print_exc()
+            result = {}
+        finally:
+            self.print_debug('end')
+            return result
 
-    @cached('invoice')
     def find_invoice(self, browser):
-        return self.scrape_table(browser, self.site_links['invoice'])
+        return self._find_table(browser, 'invoice')
 
-    @cached('receipt')
     def find_receipt(self, browser):
-        return self.scrape_table(browser, self.site_links['receipt'])
+        return self._find_table(browser, 'receipt')
 
-    @cached('activity')
     def find_account_activity(self, browser):
-        return self.scrape_table(browser, self.site_links['activity'])
+        return self._find_table(browser, 'activity')
 
-    def scrape_table(self, browser, url):
-        result = {}
-        self.print_debug(url)
-        browser.get(url)
-        frame = bs(browser.page_source, features='lxml')
-        soup = frame.find(id='ACE_width')
-        tables = soup.find_all('table', {'class': 'PSLEVEL1GRIDWBO'})
-        self.print_debug(len(tables))
-        for table in tables:
-            if table.find('table', {'class': 'PSLEVEL1GRID'}):
-                result[table['id'].split('$')[0]] = webutil.util_soup2List(
-                    table.find('table', {'class': 'PSLEVEL1GRID'}))
-        return result
-
-    @cached('weekSch')
-    def find_weekly_sch(self, browser, target_date, start_time, end_time):
-
-        """
-        extract the HTML weekly schedule
-        date, start_time, end_time, where date is in 'dd/mm/yyyy' string format, and time is '8:00AM' format
-        """
-        # stage 1: get the page of weekly schedule
-        weekly_schedule_url = self.site_links['weekSch']
-        browser.get(weekly_schedule_url)
-
-        self.print_debug('stage 1 ends')
-
-        # stage 2: select the right week and time range
+    def _submit_weekly_sch(self, browser, target_date, start_time, end_time):
         date = browser.find_element_by_id('DERIVED_CLASS_S_START_DT')
         date.clear()
         date.send_keys(target_date)
@@ -497,19 +617,16 @@ class Portal(Website):
         input_end_time.send_keys(end_time)
         refresh = browser.find_element_by_id('DERIVED_CLASS_S_SSR_REFRESH_CAL$8$')
         refresh.click()
-
-        self.print_debug('stage 2 ends')
-
-        # stage 3: scrape data
         browser.wait(5, 'invisibility_of_element_located', 'ID', 'WAIT_win0')
-        browser.wait(1)
-        soup = bs(browser.page_source, features='lxml')
-        timetable = soup.find('table', id='WEEKLY_SCHED_HTMLAREA')
 
-        self.print_debug('stage 3 ends')
 
-        # stage 4: extract data
+    @cachetools.cached(cache=cachetools.LRUCache(maxsize=128))
+    def _parse_weekly_sch(self, html):
+        self.print_debug('begin')
+        print('_parse_weekly_sch')
         result = []
+        soup = bs(html, features='lxml')
+        timetable = soup.find('table', id='WEEKLY_SCHED_HTMLAREA')
         trs = timetable.find_all('tr')
         for i in range(len(trs)):
             if i == 0:
@@ -528,4 +645,70 @@ class Portal(Website):
                             'time': data_pack_1[2],
                             'location': data_pack_1[3]
                         })
+        self.print_debug('end')
         return result
+
+    def find_weekly_sch(self, browser, target_date, start_time='8:00AM', end_time='11:00PM'):
+        """
+        extract the HTML weekly schedule
+        date, start_time, end_time, where date is in 'dd/mm/yyyy' string format, and time is '8:00AM' format
+        """
+        self.print_debug('begin')
+
+        try:
+            # stage 1: get the page of weekly schedule
+            weekly_schedule_url = self.site_links['weekSch']
+            browser.get(weekly_schedule_url)
+
+            self.print_debug('stage 1 ends')
+
+            # stage 2: select the right week and time range
+            self._submit_weekly_sch(browser, target_date, start_time, end_time)
+
+            self.print_debug('stage 2 ends')
+
+            # stage 3: scrape data
+            result = self._parse_weekly_sch(browser.page_source)
+
+            self.print_debug('stage 3 ends')
+
+        except:
+            self.print_debug('error')
+            print_exc()
+            result = []
+        finally:
+            self.print_debug('end')
+            return result
+
+    def display_weekly_sch(self, browser, target_date, start_time='8:00AM', end_time='11:00PM'):
+        """
+        extract the HTML weekly schedule
+        date, start_time, end_time, where date is in 'dd/mm/yyyy' string format, and time is '8:00AM' format
+        """
+        self.print_debug('begin')
+        url = self.site_links['weekSch']
+
+        try:
+            # stage 1: get the page of weekly schedule
+            browser.get(url)
+
+            self.print_debug('stage 1 ends')
+
+            # stage 2: select the right week and time range
+            self._submit_weekly_sch(browser, target_date, start_time, end_time)
+
+            self.print_debug('stage 2 ends')
+
+            # stage 3: modify data
+            result = self._beautify_weekly_sch(browser.page_source)
+
+            self.print_debug('stage 3 ends')
+
+        except:
+            self.print_debug('error')
+            print_exc()
+            result = ''
+        finally:
+            self.print_debug('end')
+            return result
+

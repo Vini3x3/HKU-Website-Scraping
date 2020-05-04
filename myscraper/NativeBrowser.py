@@ -31,6 +31,24 @@ SPACE, SUBTRACT, TAB, UP
 """
 
 
+"""
+-------------------------------------
+| Global Functions and Variables    |
+-------------------------------------
+"""
+
+BROWSERS = ['Chrome', 'Firefox', 'Edge']
+
+
+def get_browser(browser, **kwargs):
+    global BROWSERS
+    if browser not in BROWSERS:
+        raise weberror.CallError(4)
+    else:
+        klass = globals()['New' + browser]
+        return klass(**kwargs)
+
+
 class Browser:
     """
     -------------------------------------
@@ -143,13 +161,3 @@ class NewEdge(Browser, Edge):
 
     def __str__(self):
         return Browser.__str__(self)
-
-
-def get_browser(browser, **kwargs):
-    browsers = ['Chrome', 'Firefox', 'Edge']
-    if browser not in browsers:
-        raise weberror.CallError(4)
-    else:
-        klass = globals()['New' + browser]
-        return klass(**kwargs)
-

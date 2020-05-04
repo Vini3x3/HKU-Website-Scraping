@@ -13,14 +13,13 @@ class WebMaster(threading.Timer):
     | Thread Basics                     |
     -------------------------------------
     """
-    def __init__(self, username, password, init_setting='Only Portal', verbose=0, cachesize=128, interval=2, function=None, browser_name='Chrome', headless=True, options=[], **kwargs):
+    def __init__(self, username, password, init_setting='Only Portal', verbose=0, cachesize=128, interval=1200, function=None, browser_name='Chrome', headless=True, options=[], **kwargs):
+        # inherent
         super().__init__(interval, function)
         self.function = self.refresh
-        self.lock = threading.Lock()
-        self.resource = 'resource'
 
+        # setting
         self.websites = {}
-        self.threads = []
         self.record = []
         self.browser = None
         self.debug = verbose > 0
@@ -48,10 +47,10 @@ class WebMaster(threading.Timer):
             self.finished.wait(self.interval)
 
     def need_browser(func):
-        def wrapper(self, *args):
+        def wrapper(self, *args, **kwargs):
             self.mutex.acquire()
-            self.print_debug('start')
-            result = func(self, *args)
+            self.print_debug('begin')
+            result = func(self, *args, **kwargs)
             self.print_debug('end')
             self.mutex.release()
             return result
@@ -84,7 +83,7 @@ class WebMaster(threading.Timer):
     def create_website(self, website_name):
         self.print_debug('begin')
         self.print_debug(website_name)
-        self.websites[website_name] = get_website(website_name, self.username, self.password)
+        self.websites[website_name] = get_website(website_name, self.username, self.password, cachesize=self.cachesize, verbose=self.verbose-1)
         self.websites[website_name].start(self.browser)
         self.print_debug('end')
 
@@ -127,18 +126,18 @@ class WebMaster(threading.Timer):
                 '[ {} ] {:20} > {:20} : {}'.format(datetime.now(), self.__class__.__name__, inspect.stack()[1][3], msg)
             )
 
-    def query(self, website_name, func_name, *args):
+    def query(self, website_name, func_name, *args, **kwargs):
         if website_name not in self.websites.keys():
             self.create_website(website_name)
         self.add_record(website_name, func_name, *args)
-        return self.scrape(website_name, func_name, *args)
+        return self.scrape(website_name, func_name, *args, **kwargs)
 
     @need_browser
-    def scrape(self, website_name, func_name, *args):
+    def scrape(self, website_name, func_name, *args, **kwargs):
         if hasattr(self.websites[website_name], func_name):
             func = getattr(self.websites[website_name], func_name)
             self.print_debug('call function')
-            result = func(self.browser, *args)
+            result = func(self.browser, *args, **kwargs)
             self.print_debug('end')
             return result
         else:
