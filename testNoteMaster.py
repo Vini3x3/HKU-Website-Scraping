@@ -1,4 +1,4 @@
-from notification.notemaster import NoteMaster
+from notification.stalenotemaster import NoteMaster
 from myscraper.webmaster import WebMaster
 from time import time, sleep
 
@@ -11,18 +11,13 @@ credential = {
 
 # webmaster = WebMaster(credential, {'initialize-website': 'On Demand', 'verbose': 0, 'headless': True})
 webmaster = WebMaster(credential)
-notemaster = NoteMaster(interval=2, verbose=1)
+notemaster = NoteMaster(webmaster, verbose=0)
 
 try:
-    # notemaster.add_default_notifiers(webmaster)
-    # notemaster.add_notifier('simple_alarm_strategy', webmaster, delay=2, range=2)
-    # notemaster.add_notifier('moodle_deadline_strategy', webmaster, delay=4, range=2)
-    # notemaster.add_notifier('portal_next_lesson_strategy', webmaster, delay=6, range=2)
-    # notemaster.add_notifier('portal_get_invoice_strategy', webmaster, delay=2, range=2)
-    # notemaster.add_notifier('moodle_course_updated', webmaster, delay=2, range=2)
-    print('start')
-    notemaster.start(webmaster)
-    sleep(7)
+    for i in range(5):
+        notices = notemaster.check(webmaster)
+        for notice in notices:
+            print(notice['msg'])
+        sleep(5)
 finally:
-    notemaster.cancel()
     webmaster.terminateThread()

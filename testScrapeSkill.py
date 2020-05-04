@@ -18,7 +18,7 @@ def parse_page(browser, url, id):
     browser.get(url)
     soup = bs(browser.page_source, features="lxml")
     soup.find('div', id=id)
-
+    
 
 if __name__ == '__main__':
     url = 'https://www.python.org/'
