@@ -12,17 +12,17 @@ def util_universal_hku_login(browser, credential):
 
 def util_getELEMfromProperties(selenium_object, tag_name, feature_dict):
     """
-    This function is for getting the selenium object from other properties.  
+    This function is for getting the selenium object from other properties.
     the selenium_boject is a selenium object, get from self.browser or self.browser.find('......')
     the feature_dict is like {'class': 'abc'} that for BS4
     the tag_name is a string of the tag name of the target element
     """
-    targets = selenium_object.find_elements_by_tag_name(tag_name)        
-    
+    targets = selenium_object.find_elements_by_tag_name(tag_name)
+
     for target in targets:
         match = True
         for key, value in feature_dict.items():
-            if match:   
+            if match:
                 if target.get_attribute(key) != value:
                     match = False
         if match:
@@ -55,7 +55,7 @@ def util_HTMLtable2List(soup):
         # result += row
     if not thead and not tbody:
         result += rowelem(soup)
-        # trs = soup.find_all('tr')        
+        # trs = soup.find_all('tr')
         # result += [tr.find_all(['td','th']) for tr in trs]
     return result
 
@@ -73,7 +73,7 @@ def util_soup2List(soup):
         result += rowelem(thead)
     tbody = soup.find('tbody')
     if tbody:
-        result += rowelem(tbody)        
+        result += rowelem(tbody)
     if not thead and not tbody:
-        result += rowelem(soup)        
+        result += rowelem(soup)
     return result
