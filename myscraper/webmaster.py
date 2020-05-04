@@ -12,7 +12,7 @@ class WebMaster:
     | Object Basics                     |
     -------------------------------------
     """
-    def __init__(self, credential, webscrape_settings=None):        
+    def __init__(self, credential, webscrape_settings=None):
         self.websites = {}
         self.threads = []
         self.record = []
