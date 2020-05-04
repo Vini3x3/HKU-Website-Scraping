@@ -1,8 +1,15 @@
-# Fix Bug
+# New Development
 
-The version is created for adopting new changes from Portal Upgrades.  They are: 
+The version is created for two purpose: 
 
-- Portal `logout` function
-- Portal `findWeeklySchedule` function
-- Add `findWeeklySch` function, which parse the weekly schedule HTML 
+1. adding new functions in `HKUSites.py`: 
 
+- Add `findContentByKeywords` function, which is `findCourseByKeywords` + `scrapeCourseContent`
+- Add `findPageView` function, which is `findCourseByKeywords` + `scrapeCourseContentPreview`
+- Add `findTable` function, which is work above `findInvoice`, `findReceipt`  and `findAccountActivtiy`
+
+2. add notification module
+
+- Auto notify when invoice is not paid
+- Auto notify when lecture is near
+- Auto notify when deadline is near
