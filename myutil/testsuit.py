@@ -122,7 +122,7 @@ def compileTest(func, *args):
 
 
 def timedTest(repeat=1):
-    def real_decorator(function):
+    def decorator(function):
         def wrapper(*args):
             try:
                 start_time = time()
@@ -133,7 +133,7 @@ def timedTest(repeat=1):
                 return -1            
             return end_time - start_time
         return wrapper
-    return real_decorator
+    return decorator
 
 
 def errorTest(func, *args):

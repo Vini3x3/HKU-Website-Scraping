@@ -13,7 +13,7 @@ class WebMaster(threading.Timer):
     | Thread Basics                     |
     -------------------------------------
     """
-    def __init__(self, username, password, init_setting='Only Portal', verbose=0, cachesize=128, interval=1200, function=None, browser_name='Chrome', headless=True, options=[], **kwargs):
+    def __init__(self, username, password, init_setting='Only Portal', verbose=0, interval=1200, function=None, browser_name='Chrome', headless=True, options=[], **kwargs):
         # inherent
         super().__init__(interval, function)
         self.function = self.refresh
@@ -30,7 +30,6 @@ class WebMaster(threading.Timer):
         self.username = username
         self.password = password
         self.verbose = verbose
-        self.cachesize = cachesize
 
         # initialize
         self.browser = get_browser(browser_name, headless=headless, options=options, **kwargs)
@@ -83,7 +82,7 @@ class WebMaster(threading.Timer):
     def create_website(self, website_name):
         self.print_debug('begin')
         self.print_debug(website_name)
-        self.websites[website_name] = get_website(website_name, self.username, self.password, cachesize=self.cachesize, verbose=self.verbose-1)
+        self.websites[website_name] = get_website(website_name, self.username, self.password, verbose=self.verbose-1)
         self.websites[website_name].start(self.browser)
         self.print_debug('end')
 
@@ -98,7 +97,8 @@ class WebMaster(threading.Timer):
     | Record Related                    |
     -------------------------------------
     """
-    def format_record(self, website_name, func_name, *args):
+    @staticmethod
+    def format_record(website_name, func_name, *args):
         msg = ''
         for _ in args:
             msg += str(_) + ', '
@@ -142,5 +142,6 @@ class WebMaster(threading.Timer):
             return result
         else:
             self.print_debug('no such function')
-            raise weberror.CallError(0)
+            # raise weberror.CallError(0)
+            return
 
