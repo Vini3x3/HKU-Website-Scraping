@@ -20,6 +20,11 @@ class NoteMaster(threading.Timer):
         self.notifiers = []
         self.notices = []
         self.start_time = 0
+        self.list_of_notifiers = [
+            ['moodle_deadline_strategy', 0, 600],
+            ['portal_next_lesson_strategy', 0, 600],
+            ['portal_get_invoice_strategy', 600, 600],
+        ]
 
         # copy arguments
         self.verbose = verbose
@@ -97,11 +102,6 @@ class NoteMaster(threading.Timer):
 
     @debug
     def add_default_notifiers(self, webmaster):
-        list_of_notifiers = [
-            ['moodle_deadline_strategy', 0, 600],
-            ['portal_next_lesson_strategy', 0, 600],
-            ['portal_get_invoice_strategy', 600, 600],
-        ]
-        for row in list_of_notifiers:
+        for row in self.list_of_notifiers:
             self.add_notifier(row[0], webmaster, delay=row[1], range=row[2])
 

@@ -9,7 +9,7 @@ def cannot_use(func):
 
 
 def moodle_deadline_strategy(webmaster, delay, range):
-    deadlines = webmaster.query('Moodle', 'scrapeDeadlines')
+    deadlines = webmaster.query('Moodle', 'find_deadlines')
     if len(deadlines) > 0:
         near_deadline = deadlines[0]
         return [{
@@ -32,7 +32,7 @@ def simple_alarm_strategy(webmaster, delay, range):
 
 
 def portal_next_lesson_strategy(webmaster, delay, range):
-    timetable = webmaster.query('Portal', 'findWeeklySch', datetime.now().strftime('%d/%m/%y'), '8:00AM', '11:00PM')
+    timetable = webmaster.query('Portal', 'find_weekly_sch', datetime.now().strftime('%d/%m/%y'), '8:00AM', '11:00PM')
     result = []
     for time_slot in timetable:
         start_time = time_slot['time'].split(' - ')[0]
@@ -49,7 +49,7 @@ def portal_next_lesson_strategy(webmaster, delay, range):
 
 
 def portal_get_invoice_strategy(webmaster, delay, range):
-    invoice_info = webmaster.query('Portal', 'findInvoice')
+    invoice_info = webmaster.query('Portal', 'find_invoice')
     # for key in invoice_info.keys():
     #     print(key)
     #     for row in invoice_info[key]:
@@ -68,7 +68,7 @@ def portal_get_invoice_strategy(webmaster, delay, range):
 
 @cannot_use
 def moodle_course_updated(webmaster, delay, range):
-    transcript_info = webmaster.query('Portal', 'findTranscript')
+    transcript_info = webmaster.query('Portal', 'find_transcript')
     # for row in transcript_info['CRSE_HIST']:
     #     print(row)
     if datetime.now().month < 9:
