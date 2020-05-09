@@ -1,9 +1,7 @@
-# More Structural Upgrade and Great Extension
+# Finalized Version
 
-Many changes are included in this branch 9.1.  The major reason is to catch the development in branch 8.1 and branch 8.2.  
+Based on Branch 9.1, below is the finalized version
 
-- Add notification module
-- Add new scraping functions
-- Allow keyword arguments in calling webmaster.query
-- Standardize the naming in global variables
-- Fix bug
+- Use sematic python class annotations
+- remove browser cache functions
+- add advanced selected HTML function for better parser caching
