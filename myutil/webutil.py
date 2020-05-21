@@ -12,27 +12,8 @@ def util_universal_hku_login(browser, username, password):
     # browser.wait(1)
 
 
-def util_getELEMfromProperties(selenium_object, tag_name, feature_dict):
-    """
-    This function is for getting the selenium object from other properties.  
-    the selenium_boject is a selenium object, get from self.browser or self.browser.find('......')
-    the feature_dict is like {'class': 'abc'} that for BS4
-    the tag_name is a string of the tag name of the target element
-    """
-    targets = selenium_object.find_elements_by_tag_name(tag_name)        
-    
-    for target in targets:
-        match = True
-        for key, value in feature_dict.items():
-            if match:   
-                if target.get_attribute(key) != value:
-                    match = False
-        if match:
-            return target
-
-
-def util_HTMLtable2List(soup):
-    def rowelem(elem):
+def util_soup2list(soup):
+    def row_elem(elem):
         rows = elem.find_all('tr')
         rows = [tr.find_all(['td','th']) for tr in rows]
         for i in range(len(rows)):
@@ -42,42 +23,51 @@ def util_HTMLtable2List(soup):
     thead = soup.find('thead')
     result = []
     if thead:
-        # trs = thead.find_all('tr')
-        # row = [tr.find_all(['td','th']) for tr in trs]
-        # row = [each.get_text() for each in row]
-        # result += row
-        result += rowelem(thead)
+        result += row_elem(thead)
     tbody = soup.find('tbody')
     if tbody:
-        result += rowelem(tbody)
-        # trs = tbody.find_all('tr')
-        # result += [tr.find_all(['td','th']) for tr in trs]
-
-        # row = [tr.find_all(['td','th']) for tr in trs]
-        # row = [each.get_text() for each in row]
-        # result += row
+        result += row_elem(tbody)
     if not thead and not tbody:
-        result += rowelem(soup)
-        # trs = soup.find_all('tr')        
-        # result += [tr.find_all(['td','th']) for tr in trs]
+        result += row_elem(soup)
     return result
 
 
-def util_soup2List(soup):
-    def rowelem(elem):
-        rows = elem.find_all('tr')
-        rows = [tr.find_all(['td','th']) for tr in rows]
-        for i in range(len(rows)):
-            for j in range(len(rows[i])):
-                rows[i][j] = rows[i][j].get_text().replace(u'\xa0', u' ').replace('\n', '').strip()
-        return rows
-    thead = soup.find('thead')
-    result = []
-    if thead:
-        result += rowelem(thead)
-    tbody = soup.find('tbody')
-    if tbody:
-        result += rowelem(tbody)        
-    if not thead and not tbody:
-        result += rowelem(soup)        
-    return result
+def util_list_search(search_list, quota=0, exact=False):
+    if quota != 0:
+        if exact:
+            # adjust the quota
+            if 0 < quota <= len(search_list):
+                adjusted_quota = quota - 1
+            elif len(search_list) < quota:
+                adjusted_quota = len(search_list)
+            elif -1 * len(search_list) < quota < 0:
+                adjusted_quota = quota
+            elif quota < -1 * len(search_list):
+                adjusted_quota = -1 * len(search_list)
+            else: # input = 0
+                return
+            # output
+            return search_list[adjusted_quota]
+        else:
+            # adjust the quota
+            if 0 < quota <= len(search_list):
+                adjusted_quota = quota
+            elif len(search_list) < quota:
+                adjusted_quota = len(search_list)
+            elif -1 * len(search_list) < quota < 0:
+                adjusted_quota = quota
+            elif quota < -1 * len(search_list):
+                adjusted_quota = -1 * len(search_list)
+            else: # input = 0
+                return []
+            # output
+            if 0 < adjusted_quota <= len(search_list):
+                return search_list[0:adjusted_quota]
+            else:
+                result = []
+                for i in range(len(search_list) - 1, len(search_list) + adjusted_quota - 1, -1):
+                    # print(i)
+                    result.append(search_list[i])
+                return result
+    else:
+        return search_list

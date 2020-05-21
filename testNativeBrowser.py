@@ -56,12 +56,16 @@ urls = [
 ]
 
 """test cases"""
+
+
 @testsuit.log('test', 1, 'get url')
 @testsuit.compileTest
 def test_get_url(browser):
     browser.get(urls[0])
     if browser.current_url != urls[0]:
         return False
+
+
 @testsuit.log('test', 2, 'get page_source')
 @testsuit.compileTest
 def test_get_page_source(browser):
@@ -72,6 +76,8 @@ def test_get_page_source(browser):
         return False
     else:
         return True
+
+
 @testsuit.log('test', 3, 'simple wait')
 @testsuit.compileTest
 def test_simple_wait(browser):
@@ -83,6 +89,8 @@ def test_simple_wait(browser):
         return True
     else:
         return False
+
+
 @testsuit.log('test', 4, 'advanced wait')
 @testsuit.compileTest
 def test_advanced_wait(browser):
@@ -94,26 +102,35 @@ def test_advanced_wait(browser):
         return True
     else:
         return False
+
+
 @testsuit.log('test', 5, 'create tab')
 @testsuit.compileTest
 def test_create_tab(browser):
-    browser.tab('firstsite', urls[2])
-    browser.tab('secondsite', urls[3])
+    browser.tab('first_site', urls[2])
+    browser.tab('second_site', urls[3])
+
+
 @testsuit.log('test', 6, 'switch tab')
 @testsuit.compileTest
 def test_switch_tab(browser):
     browser.tab(0)
-    browser.tab('firstsite')        
+    browser.tab('first_site')
+
+
 @testsuit.log('test', 7, 'destroy tab')
 @testsuit.compileTest
 def test_destroy_tab(browser):
-    browser.untab('secondsite')
+    browser.untab('second_site')
+
+
 @testsuit.log('test', 8, 'destroy browser')
 @testsuit.compileTest
 def test_destroy_browser(browser):
     browser.quit()
 
-if __name__ == '__main__':    
+
+if __name__ == '__main__':
 
     for browser_name in browser_names:
         klass = globals()[browser_name]
@@ -132,9 +149,9 @@ if __name__ == '__main__':
         testsuit.printlog('test', 0, 'create browser')
         try:        
             browser = klass()
-            test_result['create browser']=True
+            test_result['create browser'] = True
         except:
-            test_result['create browser']=False
+            test_result['create browser'] = False
         if test_result['create browser']:            
             test_result['get url'] = test_get_url(browser)
         if test_result['get url']:            

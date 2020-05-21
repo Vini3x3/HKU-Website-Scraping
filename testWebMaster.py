@@ -1,5 +1,5 @@
 """
-Test Metrics: 
+Test Metrics:
 - refresh browser
 - query
 - get record
@@ -8,9 +8,10 @@ Test Metrics:
 from myscraper.webmaster import WebMaster
 from myutil import testsuit
 import re
+import time
 
 
-@testsuit.log('test', 1, 'needBrowser')
+@testsuit.log('test', 1, 'need_browser')
 @testsuit.compileTest
 def test_need_browser(webmaster):
     webmaster.test()
@@ -33,7 +34,7 @@ def test_query(webmaster):
 def test_record(webmaster):
     record = webmaster.get_record()
     r = re.compile('[ .*-.*-.* .*:.*:.*..* ] .* > .* : .*')
-    if r.match(record[0]) is not None:    
+    if r.match(record[0]) is not None:
         print ('matches')
         if 'Moodle' in record[0] and 'get_sitemap' in record[0]:
             return True
@@ -54,12 +55,12 @@ def test_destroy_webmaster(webmaster):
     del webmaster
 
 credential = {
-    'username': '',
-    'password': '',
+    'username': 'u3537502',
+    'password': 'YourMother62329197',
 }
 test_result = {
     'create webmaster': None,
-    'needBrowser': None,
+    'need_browser': None,
     'refresh': None,
     'query': None,
     'record': None,
@@ -67,7 +68,7 @@ test_result = {
     'destroy webmaster': None,
 }
 
-if __name__ == '__main__':    
+if __name__ == '__main__':
     testsuit.printlog('field', 'Web Master')
     testsuit.printlog('test', 0, 'create webmaster')
     try:
@@ -76,8 +77,8 @@ if __name__ == '__main__':
     except:
         test_result['create webmaster'] = False
     if test_result['create webmaster']:
-        test_result['needBrowser'] = test_need_browser(webmaster)
-    if test_result['needBrowser']:
+        test_result['need_browser'] = test_need_browser(webmaster)
+    if test_result['need_browser']:
         test_result['refresh'] = test_refresh(webmaster)
         test_result['query'] = test_query(webmaster)
         test_result['record'] = test_record(webmaster)
